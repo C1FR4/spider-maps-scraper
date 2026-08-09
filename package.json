@@ -26,5 +26,8 @@
     "exceljs": "^4.4.0",
     "p-limit": "^6.2.0",
     "puppeteer": "^25.1.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["better-sqlite3", "puppeteer"]
   }
 }

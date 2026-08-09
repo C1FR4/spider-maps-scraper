@@ -63,6 +63,27 @@ npm install
 # 3. Ejecuta
 npm start
 ```
+
+### Instalación alternativa con pnpm
+
+Si prefieres usar **pnpm** en lugar de npm:
+
+```bash
+# 1. Instala pnpm si no lo tienes
+npm install -g pnpm
+
+# 2. Clona el repositorio e instala dependencias
+git clone https://github.com/C1FR4/spider-maps-scraper.git
+cd spider-maps-scraper
+pnpm install
+```
+
+El archivo `package.json` ya incluye la configuración `pnpm.onlyBuiltDependencies` para autorizar los scripts de instalación de `better-sqlite3` (compila módulo nativo) y `puppeteer` (descarga Chromium). Con esto, `pnpm install` ejecuta ambos scripts automáticamente.
+
+> **Nota:** Si por tu versión de pnpm los builds no se autorizan solos, ejecuta `pnpm approve-builds` y aprueba `better-sqlite3` y `puppeteer` manualmente.
+
+El resto del proyecto (comandos para correr el scraper, configuración, etc.) es idéntico sin importar qué gestor de paquetes uses para instalar.
+
 > **Nota para Windows:** Si usas `npm start` desde el **Símbolo del sistema clásico (cmd.exe)** y presionas Ctrl+C, puede aparecer el mensaje `"¿Desea terminar el trabajo por lotes (S/N)?"`. Esto es comportamiento de Windows/npm, no del scraper. Recomendaciones:
 > - Ejecuta con `node scraper.js` directamente para que el menú interactivo de pausa funcione correctamente.
 > - O usa **PowerShell** o **Windows Terminal** en vez de cmd.exe — no tienen ese mensaje heredado.
