@@ -198,7 +198,7 @@ Genera `contactos.xlsx` con:
 - **Pausas aleatorias**: agrega delays variables para simular comportamiento humano.
 - **Sin API keys**: no requiere claves ni proxies pagados.
 - **Exportación directa**: `node scraper.js --export` genera el Excel desde la BD sin volver a scrapear.
-- **Manejo de Ctrl+C**: menú interactivo con opciones para continuar, terminar y exportar, o pausar (guarda progreso para reanudar después).
+- **Presionar cualquier tecla para pausar**: menú interactivo con opciones para continuar, terminar y exportar.
 
 ---
 
