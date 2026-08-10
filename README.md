@@ -78,9 +78,20 @@ cd spider-maps-scraper
 pnpm install
 ```
 
-El archivo `package.json` ya incluye la configuración `pnpm.onlyBuiltDependencies` para autorizar los scripts de instalación de `better-sqlite3` (compila módulo nativo) y `puppeteer` (descarga Chromium). Con esto, `pnpm install` ejecuta ambos scripts automáticamente.
+El archivo `package.json` incluye la configuración `pnpm.onlyBuiltDependencies` para autorizar los scripts de instalación de `better-sqlite3` (compila módulo nativo) y `puppeteer` (descarga Chromium). Sin embargo, **en versiones recientes de pnpm ese campo ya no se lee automáticamente** (pnpm lo movió a `pnpm-workspace.yaml` y muestra un warning al respecto), así que es probable que al correr `pnpm install` veas algo como:
 
-> **Nota:** Si por tu versión de pnpm los builds no se autorizan solos, ejecuta `pnpm approve-builds` y aprueba `better-sqlite3` y `puppeteer` manualmente.
+```
+[WARN] The "pnpm" field in package.json is no longer read by pnpm.
+[ERR_PNPM_IGNORED_BUILDS] Ignored build scripts: better-sqlite3@..., puppeteer@...
+```
+
+**Solución:** si los builds se ignoran, ejecuta `pnpm approve-builds` y aprueba `better-sqlite3` y `puppeteer` manualmente:
+
+```bash
+pnpm approve-builds
+```
+
+Después vuelve a intentar `pnpm install` si es necesario, y `pnpm start` ya debería funcionar con normalidad.
 
 El resto del proyecto (comandos para correr el scraper, configuración, etc.) es idéntico sin importar qué gestor de paquetes uses para instalar.
 
