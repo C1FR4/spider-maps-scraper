@@ -128,6 +128,22 @@ npx puppeteer browsers install chrome
 
 Después vuelve a intentar `node scraper.js` (o `npm start` / `pnpm start`) con normalidad.
 
+### Vulnerabilidad `uuid` en `npm audit`
+
+Al correr `npm audit` puede aparecer **1 vulnerabilidad moderada** relacionada con el paquete `uuid`:
+
+```
+uuid  <11.1.1
+Severity: moderate
+uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided
+```
+
+**Origen:** viene directo de `exceljs@4.4.0` (la dependencia de exportación a Excel del proyecto, ya en su versión más reciente disponible) — no es código propio del scraper.
+
+**Estado:** no tiene solución sin degradar `exceljs` a una versión mayor anterior (`3.4.0`), lo cual rompería la generación del Excel. Por eso se deja así intencionalmente.
+
+**Acción requerida:** ninguna. Es informativo; quien clona el repo no necesita hacer nada.
+
 ---
 
 ## Configuración
