@@ -1450,10 +1450,31 @@ async function main() {
   console.log(`   Presiona cualquier tecla para pausar (menú al terminar la búsqueda actual)\n`);
   console.log(`${"─".repeat(50)}\n`);
 
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox", "--lang=es-PE"],
-  });
+  let browser;
+  try {
+    browser = await puppeteer.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox", "--lang=es-PE"],
+    });
+  } catch (err) {
+    const msg = err.message || "";
+    if (
+      msg.includes("Could not find Chrome") ||
+      msg.includes("Could not find expected browser") ||
+      msg.includes("No Chrome binary found")
+    ) {
+      const red = "\x1b[31m";
+      const yellow = "\x1b[33m";
+      const cyan = "\x1b[36m";
+      const reset = "\x1b[0m";
+      console.error(`${red} ✖${reset}  ${red}No se encontró Chrome instalado${reset}`);
+      console.log(`\n   ${cyan}Puppeteer necesita Chrome para funcionar.${reset}`);
+      console.log(`   Solución: desde la raíz del proyecto, ejecuta:`);
+      console.log(`     ${yellow}npx puppeteer browsers install chrome${reset}\n`);
+      process.exit(1);
+    }
+    throw err;
+  }
   browserActivo = browser;
 
   let pool = [];

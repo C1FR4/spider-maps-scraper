@@ -95,6 +95,30 @@ El resto del proyecto (comandos para correr el scraper, configuración, etc.) es
 
 ---
 
+## Solución de problemas
+
+### Error: "Could not find Chrome"
+
+Si al ejecutar `node scraper.js` (o `npm start` / `pnpm start`) aparece:
+
+```
+Error: Could not find Chrome (ver. XXX.X.XXXX.XX). This can occur if either
+ 1. you did not perform an installation before running the script (e.g. `npx puppeteer browsers install chrome`) or
+ 2. your cache path is incorrectly configured...
+```
+
+Significa que **Puppeteer no descargó Chromium durante la instalación**. Esto puede ocurrir tanto con `npm install` como con `pnpm install` (por ejemplo, si el postinstall se interrumpió, hubo un problema de red, o con pnpm la descarga quedó pendiente de una corrida anterior).
+
+**Solución:** Desde la raíz del proyecto, ejecuta:
+
+```bash
+npx puppeteer browsers install chrome
+```
+
+Después vuelve a intentar `node scraper.js` (o `npm start` / `pnpm start`) con normalidad.
+
+---
+
 ## Configuración
 
 ### Categorías y distritos
