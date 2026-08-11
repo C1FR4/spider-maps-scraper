@@ -95,8 +95,10 @@ Después vuelve a intentar `pnpm install` si es necesario, y `pnpm start` ya deb
 
 El resto del proyecto (comandos para correr el scraper, configuración, etc.) es idéntico sin importar qué gestor de paquetes uses para instalar.
 
-> **Nota para Windows:** Si usas `npm start` desde el **Símbolo del sistema clásico (cmd.exe)** y presionas Ctrl+C, puede aparecer el mensaje `"¿Desea terminar el trabajo por lotes (S/N)?"`. Esto es comportamiento de Windows/npm, no del scraper. Recomendaciones:
-> - Ejecuta con `node scraper.js` directamente para que el menú interactivo de pausa funcione correctamente.
+> **Nota para Windows:** Durante el scraping, **pulsar cualquier tecla** (una letra, espacio, etc.) abre el menú interactivo de pausa con las opciones `[c] Continuar` / `[t] Terminar y exportar`. **Ctrl+C es distinto**: no pasa por ese menú — cierra el navegador y la base de datos de forma limpia y termina el programa directamente, sin preguntar nada.
+>
+> Si usas `npm start` desde el **Símbolo del sistema clásico (cmd.exe)** y presionas Ctrl+C, puede aparecer el mensaje `"¿Desea terminar el trabajo por lotes (S/N)?"`. Esto es comportamiento de Windows/npm, no del scraper. Recomendaciones:
+> - Ejecuta con `node scraper.js` directamente (en vez de `npm start`) para que la app reciba bien las pulsaciones de teclado, sin la capa intermedia de npm envolviendo el proceso.
 > - O usa **PowerShell** o **Windows Terminal** en vez de cmd.exe — no tienen ese mensaje heredado.
 > - Pase lo que pase, los datos ya recolectados están guardados en `contactos.db`. Siempre puedes recuperarlos con:
 >   ```bash
