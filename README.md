@@ -198,7 +198,7 @@ Genera `contactos.xlsx` con:
 - Filtros automáticos en todas las columnas
 - Categoría exacta como la configuró el usuario
 - Teléfonos normalizados (sin prefijo +51)
-- Enlaces directos funcionales (WhatsApp, redes sociales)
+- Enlaces directos (WhatsApp, redes sociales)
 
 ---
 
