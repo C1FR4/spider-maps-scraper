@@ -3,7 +3,7 @@ const path = require("path");
 const fs = require("fs");
 const { exec } = require("child_process");
 const { engine } = require("./scraperEngine");
-const { obtenerRecientes, obtenerEstadisticas, contarNegocios } = require("./db");
+const { obtenerRecientes, obtenerEstadisticas, contarNegocios, vaciarBaseDeDatos } = require("./db");
 const { exportarExcelDesdeDb } = require("./excel");
 const { mostrarBanner } = require("../banner");
 
@@ -130,6 +130,26 @@ app.get("/api/download/excel", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+app.post("/api/database/clear", (req, res) => {
+  if (engine.activo) {
+    return res.status(400).json({ error: "No puedes vaciar la base de datos mientras hay una extracción en curso." });
+  }
+  try {
+    vaciarBaseDeDatos();
+    res.json({ ok: true, mensaje: "Base de datos reiniciada con éxito." });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/system/shutdown", (req, res) => {
+  res.json({ ok: true, mensaje: "Servidor cerrándose..." });
+  console.log("\n  [Sistema] Apagado solicitado desde el Panel Web.");
+  setTimeout(() => {
+    process.exit(0);
+  }, 600);
 });
 
 // ─── INICIAR SERVIDOR ──────────────────────────────────────────────

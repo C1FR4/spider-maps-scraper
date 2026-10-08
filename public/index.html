@@ -11,7 +11,7 @@
 </head>
 <body>
   <div class="app-layout">
-    <!-- BARRA SUPERIOR — minimalista, sin título duplicado -->
+    <!-- BARRA SUPERIOR — minimalista, con estado y control de servidor -->
     <header class="top-nav">
       <div class="nav-status">
         <span class="nav-dot"></span>
@@ -19,6 +19,9 @@
       </div>
       <div class="nav-actions">
         <span class="badge-version">Perú · v2.0 Turbo</span>
+        <button id="btnApagarServidor" class="btn btn-secondary btn-sm" title="Detener el servidor local por completo">
+          ⏻ Apagar Servidor
+        </button>
       </div>
     </header>
 
@@ -213,6 +216,9 @@
             <input type="text" id="filtroTabla" class="input-search" placeholder="🔍 Filtrar en tabla...">
             <button id="btnDescargarExcel" class="btn btn-success btn-sm">
               📥 Excel
+            </button>
+            <button id="btnLimpiarBd" class="btn btn-secondary btn-sm" title="Borrar datos previos e iniciar sesión limpia">
+              🔄 Nueva Sesión (Limpiar BD)
             </button>
           </div>
         </div>

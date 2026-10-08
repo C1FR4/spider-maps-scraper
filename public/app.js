@@ -16,6 +16,8 @@ const selectModo = document.getElementById("selectModo");
 const btnIniciar = document.getElementById("btnIniciar");
 const btnDetener = document.getElementById("btnDetener");
 const btnDescargarExcel = document.getElementById("btnDescargarExcel");
+const btnLimpiarBd = document.getElementById("btnLimpiarBd");
+const btnApagarServidor = document.getElementById("btnApagarServidor");
 const progressBar = document.getElementById("progressBar");
 const progressText = document.getElementById("progressText");
 const progressPercent = document.getElementById("progressPercent");
@@ -339,6 +341,50 @@ btnDetener.addEventListener("click", async () => {
 
 btnDescargarExcel.addEventListener("click", () => {
   window.location.href = "/api/download/excel";
+});
+
+// Limpiar base de datos / Iniciar sesión nueva
+btnLimpiarBd.addEventListener("click", async () => {
+  if (state.isScraping) {
+    alert("No puedes reiniciar la base de datos mientras se está extrayendo información.");
+    return;
+  }
+  const confirmacion = confirm(
+    "¿Estás seguro de que deseas vaciar la base de datos e iniciar una nueva sesión?\n\nEsto borrará los prospectos anteriores para que comiences desde cero."
+  );
+  if (!confirmacion) return;
+
+  try {
+    const res = await fetch("/api/database/clear", { method: "POST" });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Error al limpiar base de datos");
+
+    agregarLog("Base de datos reiniciada con éxito. Listo para una nueva búsqueda.", "info");
+    tbodyLeads.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Base de datos vacía. Configura tus categorías e inicia la extracción.</td></tr>`;
+    actualizarContadoresEnVivo();
+  } catch (err) {
+    alert(`Error: ${err.message}`);
+  }
+});
+
+// Apagar servidor local
+btnApagarServidor.addEventListener("click", async () => {
+  const confirmacion = confirm(
+    "¿Deseas apagar el servidor local de Spider Maps Scraper?\n\nLa página dejará de responder hasta que vuelvas a ejecutar 'npm start' o 'iniciar.bat'."
+  );
+  if (!confirmacion) return;
+
+  try {
+    await fetch("/api/system/shutdown", { method: "POST" });
+  } catch (_) {}
+
+  document.body.innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#07090f;color:#f0f4ff;font-family:sans-serif;text-align:center;padding:20px;">
+      <h1 style="color:#ef4444;font-size:28px;margin-bottom:12px;">Servidor Detenido</h1>
+      <p style="color:#7b8eb5;max-width:480px;line-height:1.6;font-size:14px;">El servidor local ha sido apagado correctamente. Puedes cerrar esta pestaña en tu navegador con total seguridad.</p>
+      <p style="margin-top:20px;font-size:12px;color:#475569;">Para volver a usarlo, ejecuta nuevamente <code>npm start</code> o <code>iniciar.bat</code>.</p>
+    </div>
+  `;
 });
 
 // ─── INICIALIZACIÓN ────────────────────────────────────────────────

@@ -164,6 +164,13 @@ function obtenerEstadisticas() {
   };
 }
 
+function vaciarBaseDeDatos() {
+  const db = getDb();
+  db.exec("DELETE FROM negocios; DELETE FROM sqlite_sequence WHERE name = 'negocios';");
+  checkpointWAL();
+  return true;
+}
+
 function cerrar() {
   if (dbInstance) {
     try {
@@ -184,6 +191,7 @@ module.exports = {
   obtenerRecientes,
   terminoYaProcesado,
   obtenerEstadisticas,
+  vaciarBaseDeDatos,
   checkpointWAL,
   cerrar,
 };
