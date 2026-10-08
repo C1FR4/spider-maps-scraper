@@ -4,7 +4,17 @@
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Status](https://img.shields.io/badge/status-activo-brightgreen)
 
-Herramienta para recolectar datos de contacto de negocios desde Google Maps. Diseñada para proyectos de logística que requieren identificar proveedores y colaboradores en múltiples categorías y distritos.
+Herramienta para recolectar datos de contacto de negocios desde Google Maps. Diseñada para proyectos de prospección y logística con interfaz web interactiva en tiempo real y motor Turbo de alta velocidad.
+
+---
+
+## 🚀 Novedades v2.0 Turbo
+
+- 🌐 **Panel Web Local (`http://localhost:3000`):** Configura categorías y distritos con chips interactivos, mira el progreso en tiempo real y descarga tu Excel con un clic.
+- ⚡ **Motor Turbo (5x a 10x más rápido):** Peticiones HTTP ultrarrápidas con cabeceras reales que eliminan los errores 406/403.
+- 🛡️ **Anti-Detección Stealth:** Integración con `puppeteer-extra-plugin-stealth` para evitar bloqueos por tráfico inusual en Google Maps.
+- 🔓 **Decodificador Cloudflare:** Recupera correos ofuscados con `data-cfemail` y botones flotantes de WhatsApp.
+- 🖱️ **Doble clic en Windows:** Inicia con `iniciar.bat` sin necesidad de comandos.
 
 ---
 
@@ -17,8 +27,8 @@ Herramienta para recolectar datos de contacto de negocios desde Google Maps. Dis
 | Valoración | Google Maps |
 | Dirección | Google Maps |
 | Teléfono | Google Maps + Web del negocio |
-| Correo electrónico | Web del negocio |
-| WhatsApp | Web del negocio |
+| Correo electrónico | Web del negocio (incluye Cloudflare decodificado) |
+| WhatsApp | Web del negocio (enlaces y widgets flotantes) |
 | Instagram | Web del negocio |
 | Facebook | Web del negocio |
 | TikTok | Web del negocio |
@@ -29,28 +39,26 @@ Herramienta para recolectar datos de contacto de negocios desde Google Maps. Dis
 ## ¿Cómo funciona?
 
 ```
-config.json (categorías × distritos)
+Panel Web / CLI (categorías × distritos)
         ↓
-Google Maps → scroll infinito → lista de enlaces
+Google Maps (Stealth + Bloqueo de recursos pesados) → lista de enlaces
         ↓
-Pool persistente (4 páginas paralelas) → extrae fichas
+Pool de pestañas concurrentes → extrae datos básicos de Maps
         ↓
-Fetch-first / Puppeteer fallback → web de cada negocio
+Modo Turbo (HTTP Fetch rápido con cabeceras reales) / Modo Profundo
         ↓
-Detecta subpágina de contacto y "sobre nosotros" y las visita también
+Decodifica correos Cloudflare + Widgets flotantes + Subpáginas de contacto
         ↓
 Almacena en SQLite (contactos.db) → exporta a contactos.xlsx
         ↓
-Reanudación automática: si se interrumpe, retoma donde quedó
+Streaming en vivo (SSE) a la tabla del panel web
 ```
 
 ---
 
-## Instalación
+## Instalación y Uso
 
 **Requisitos:** Node.js 18 o superior
-
-> **Nota:** Al ejecutar `npm install`, Puppeteer descargará Chromium (~300 MB) automáticamente.
 
 ```bash
 # 1. Clona el repositorio
@@ -60,9 +68,17 @@ git clone https://github.com/C1FR4/spider-maps-scraper.git
 cd spider-maps-scraper
 npm install
 
-# 3. Ejecuta
+# 3. Inicia el Panel Web (Abre automáticamente tu navegador en http://localhost:3000)
 npm start
+
+# O en Windows: simplemente haz doble clic en iniciar.bat
 ```
+
+> **¿Prefieres usar la consola clásica?**  
+> Puedes seguir usando el modo interactivo por terminal ejecutando:  
+> ```bash
+> npm run cli
+> ```
 
 ### Instalación alternativa con pnpm
 

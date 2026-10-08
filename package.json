@@ -4,7 +4,9 @@
   "description": "Extrae negocios de Google Maps y enriquece los datos visitando su web: teléfono, correo, WhatsApp, Instagram, Facebook y TikTok. Exporta a Excel.",
   "main": "scraper.js",
   "scripts": {
-    "start": "node scraper.js"
+    "start": "node src/server.js",
+    "cli": "node scraper.js",
+    "test": "node --test"
   },
   "keywords": [
     "google-maps",
@@ -24,10 +26,16 @@
     "better-sqlite3": "^11.7.0",
     "cheerio": "^1.2.0",
     "exceljs": "^4.4.0",
+    "express": "^5.2.1",
     "p-limit": "^6.2.0",
-    "puppeteer": "^25.1.0"
+    "puppeteer": "^25.1.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["better-sqlite3", "puppeteer"]
+    "onlyBuiltDependencies": [
+      "better-sqlite3",
+      "puppeteer"
+    ]
   }
 }

@@ -21,12 +21,5 @@
 
   "palabrasLocalPlaceholder": ["noreply", "no-reply", "placeholder", "dummy", "ejemplo", "example", "test", "tuemail", "tucorreo"],
   "dominiosPlaceholder": ["example.com", "test.com", "dominio.com", "tudominio.com", "yourdomain.com", "mysite.com", "yoursite.com", "mywebsite.com", "websitename.com"],
-  "agregadoresLinkInBio": ["linktr.ee", "beacons.ai", "linkin.bio", "bio.link", "solo.to", "lnk.bio", "allmylinks.com"],
-
-  "CATEGORIAS": [
-    "tiendas de ropa"
-  ],
-  "DISTRITOS": [
-    "San Isidro"
-  ]
+  "agregadoresLinkInBio": ["linktr.ee", "beacons.ai", "linkin.bio", "bio.link", "solo.to", "lnk.bio", "allmylinks.com"]
 }

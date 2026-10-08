@@ -1,6 +1,6 @@
 const Database = require('better-sqlite3');
 const db = new Database('contactos.db');
-const rows = db.prepare('SELECT nombre, categoria, telefono_maps, telefono_web, correo, whatsapp, instagram, facebook, tiktok, direccion, web, url_maps, busqueda, metodo, via, estado FROM negocios').all();
+const rows = db.prepare('SELECT nombre, categoria, telefono_maps, telefono_web, correo, whatsapp, instagram, facebook, tiktok, direccion, web, url_maps, busqueda, metodo, estado FROM negocios').all();
 console.log('Total rows:', rows.length);
 rows.forEach((r, i) => {
   console.log('\n--- Row ' + (i+1) + ' ---');
@@ -18,6 +18,5 @@ rows.forEach((r, i) => {
   console.log('URLMaps:', r.url_maps);
   console.log('Busqueda:', r.busqueda);
   console.log('Metodo:', r.metodo);
-  console.log('Via:', r.via);
   console.log('Estado:', r.estado);
 });

@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spider Maps Scraper · Panel de Control</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- BARRA SUPERIOR — minimalista, sin título duplicado -->
+    <header class="top-nav">
+      <div class="nav-status">
+        <span class="nav-dot"></span>
+        <span class="nav-label">Panel activo · localhost:3000</span>
+      </div>
+      <div class="nav-actions">
+        <span class="badge-version">Perú · v2.0 Turbo</span>
+      </div>
+    </header>
+
+    <!-- BANNER HERO ASCII DE LA ARAÑA (SIEMPRE VISIBLE COMO EN CLI) -->
+    <section class="spider-hero-section">
+      <div class="spider-frame">
+        <pre class="ascii-art">  
+             <span class="c-gray">,</span><span class="c-gray">,</span>                                                     <span class="c-gray">,</span><span class="c-gray">,</span>
+             <span class="c-cyan">#</span><span class="c-gray">,</span><span class="c-gray">.</span><span class="c-gray">.</span>                                                <span class="c-cyan">#</span><span class="c-gray">.</span><span class="c-gray">.</span><span class="c-gray">,</span>
+                 <span class="c-gray">:</span><span class="c-gray">-</span><span class="c-gray">-</span>                                           <span class="c-gray">-</span><span class="c-gray">-</span><span class="c-gray">:</span><span class="c-cyan">@</span>
+                 <span class="c-gray">.</span> <span class="c-gray">=</span><span class="c-gray">=</span><span class="c-dim">+</span>                                       <span class="c-dim">+</span><span class="c-gray">=</span><span class="c-gray">=</span>   <span class="c-gray">:</span>
+                      <span class="c-dim">+</span><span class="c-dim">*</span><span class="c-dim">$</span>                                 <span class="c-dim">$</span><span class="c-dim">*</span><span class="c-dim">+</span>
+                        <span class="c-dim">$</span><span class="c-dim">$</span><span class="c-dim">$</span>         <span class="c-gray">.</span>         <span class="c-gray">.</span>         <span class="c-dim">$</span><span class="c-dim">$</span><span class="c-dim">$</span>
+                         <span class="c-gray">-</span><span class="c-dim">$</span><span class="c-dim">$</span>        <span class="c-gray">.</span><span class="c-gray">.</span>       <span class="c-gray">.</span><span class="c-gray">.</span>        <span class="c-dim">$</span><span class="c-dim">$</span>
+                          <span class="c-cyan">#</span> <span class="c-dim">&amp;</span><span class="c-dim">&amp;</span>       <span class="c-dim">*</span>       <span class="c-dim">*</span>       <span class="c-dim">&amp;</span><span class="c-dim">&amp;</span>
+         <span class="c-gray">,</span><span class="c-gray">,</span><span class="c-gray">.</span><span class="c-gray">.</span>              <span class="c-cyan">%</span>  <span class="c-dim">&amp;</span>       <span class="c-dim">*</span>     <span class="c-dim">*</span>       <span class="c-dim">&amp;</span>                 <span class="c-gray">.</span><span class="c-gray">.</span><span class="c-gray">,</span><span class="c-gray">,</span>
+            <span class="c-gray">:</span><span class="c-gray">:</span><span class="c-gray">:</span><span class="c-gray">-</span><span class="c-gray">=</span><span class="c-gray">=</span><span class="c-dim">+</span><span class="c-dim">+</span>           <span class="c-cyan">B</span><span class="c-cyan">B</span>     <span class="c-dim">$</span> <span class="c-cyan">%</span> <span class="c-cyan">%</span> <span class="c-dim">$</span>     <span class="c-cyan">B</span><span class="c-cyan">B</span><span class="c-gray">.</span>          <span class="c-dim">+</span><span class="c-dim">+</span><span class="c-gray">=</span><span class="c-gray">=</span><span class="c-gray">-</span><span class="c-gray">:</span><span class="c-gray">:</span><span class="c-gray">:</span>
+                   <span class="c-dim">*</span><span class="c-dim">*</span><span class="c-dim">$</span><span class="c-dim">$</span><span class="c-dim">$</span>         <span class="c-cyan">8</span><span class="c-cyan">8</span>  <span class="c-gray">.</span><span class="c-dim">&amp;</span><span class="c-cyan">%</span><span class="c-cyan">%</span><span class="c-cyan">#</span><span class="c-cyan">M</span><span class="c-cyan">W</span><span class="c-dim">&amp;</span>   <span class="c-cyan">8</span><span class="c-cyan">8</span>         <span class="c-dim">$</span><span class="c-dim">$</span><span class="c-dim">$</span><span class="c-dim">*</span><span class="c-dim">*</span>
+                        <span class="c-dim">$</span><span class="c-dim">$</span><span class="c-dim">&amp;</span><span class="c-dim">&amp;</span><span class="c-dim">&amp;</span>     <span class="c-cyan">8</span><span class="c-cyan">8</span><span class="c-gray">:</span><span class="c-cyan">%</span><span class="c-cyan">%</span><span class="c-cyan">@</span><span class="c-cyan">@</span><span class="c-cyan">@</span><span class="c-cyan">@</span><span class="c-cyan">@</span><span class="c-cyan">8</span><span class="c-cyan">B</span> <span class="c-cyan">8</span><span class="c-cyan">8</span>     <span class="c-dim">&amp;</span><span class="c-dim">&amp;</span><span class="c-dim">&amp;</span><span class="c-dim">$</span><span class="c-dim">$</span>
+                             <span class="c-cyan">B</span><span class="c-cyan">B</span><span class="c-cyan">B</span>    <span class="c-cyan">%</span><span class="c-cyan">%</span><span class="c-cyan">@</span><span class="c-cyan">@</span><span class="c-cyan">@</span><span class="c-cyan">%</span><span class="c-cyan">#</span><span class="c-cyan">M</span><span class="c-cyan">8</span><span class="c-cyan">B</span><span class="c-dim">$</span>    <span class="c-cyan">B</span><span class="c-cyan">B</span><span class="c-cyan">B</span>
+                                <span class="c-cyan">8</span><span class="c-cyan">8</span><span class="c-cyan">8</span> <span class="c-cyan">#</span><span class="c-cyan">%</span><span class="c-cyan">%</span><span class="c-cyan">@</span><span class="c-cyan">@</span><span class="c-cyan">@</span><span class="c-cyan">%</span><span class="c-cyan">M</span><span class="c-cyan">8</span><span class="c-dim">&amp;</span><span class="c-dim">*</span> <span class="c-cyan">8</span><span class="c-cyan">8</span><span class="c-cyan">8</span>
+                                   <span class="c-cyan">W</span><span class="c-cyan">M</span><span class="c-cyan">#</span><span class="c-cyan">#</span><span class="c-cyan">%</span><span class="c-cyan">@</span><span class="c-cyan">@</span><span class="c-cyan">#</span><span class="c-cyan">W</span><span class="c-cyan">B</span><span class="c-dim">$</span><span class="c-dim">+</span><span class="c-gray">-</span>
+                                 <span class="c-cyan">8</span><span class="c-cyan">8</span> <span class="c-cyan">W</span><span class="c-cyan">W</span><span class="c-cyan">M</span><span class="c-cyan">M</span><span class="c-cyan">#</span><span class="c-cyan">M</span><span class="c-cyan">W</span><span class="c-cyan">8</span><span class="c-dim">&amp;</span><span class="c-dim">*</span><span class="c-gray">=</span><span class="c-cyan">@</span><span class="c-cyan">8</span><span class="c-cyan">8</span>
+                               <span class="c-cyan">B</span><span class="c-cyan">8</span><span class="c-cyan">8</span>  <span class="c-cyan">B</span><span class="c-cyan">B</span><span class="c-cyan">8</span><span class="c-cyan">8</span><span class="c-gray">:</span><span class="c-gray">-</span><span class="c-gray">:</span><span class="c-dim">$</span><span class="c-dim">+</span><span class="c-gray">=</span><span class="c-gray">:</span> <span class="c-gray">:</span><span class="c-cyan">8</span><span class="c-cyan">8</span><span class="c-cyan">B</span>
+                            <span class="c-cyan">B</span><span class="c-cyan">B</span><span class="c-cyan">B</span>   <span class="c-cyan">8</span><span class="c-cyan">8</span> <span class="c-dim">$</span>  <span class="c-gray">:</span><span class="c-gray">-</span><span class="c-gray">:</span>  <span class="c-gray">.</span> <span class="c-cyan">8</span><span class="c-cyan">8</span>   <span class="c-cyan">B</span><span class="c-cyan">B</span><span class="c-cyan">B</span>
+                      <span class="c-cyan">%</span><span class="c-cyan">@</span>  <span class="c-dim">&amp;</span><span class="c-dim">&amp;</span><span class="c-dim">&amp;</span>    <span class="c-cyan">8</span><span class="c-cyan">8</span>     <span class="c-gray">:</span><span class="c-gray">-</span><span class="c-gray">:</span>     <span class="c-cyan">8</span><span class="c-cyan">8</span>    <span class="c-dim">&amp;</span><span class="c-dim">&amp;</span><span class="c-dim">&amp;</span>   <span class="c-cyan">%</span>
+                     <span class="c-gray">-</span> <span class="c-dim">$</span><span class="c-dim">$</span><span class="c-dim">$</span>      <span class="c-cyan">B</span><span class="c-cyan">8</span>      <span class="c-gray">:</span><span class="c-gray">-</span><span class="c-gray">:</span>      <span class="c-cyan">8</span><span class="c-cyan">B</span>      <span class="c-dim">$</span><span class="c-dim">$</span><span class="c-dim">$</span> <span class="c-gray">:</span>
+                     <span class="c-dim">$</span><span class="c-dim">$</span><span class="c-dim">$</span>       <span class="c-cyan">B</span><span class="c-cyan">B</span>       <span class="c-gray">:</span><span class="c-gray">-</span><span class="c-gray">:</span>       <span class="c-cyan">B</span><span class="c-cyan">B</span>       <span class="c-dim">$</span><span class="c-dim">$</span><span class="c-dim">$</span>
+                  <span class="c-dim">+</span><span class="c-dim">+</span><span class="c-dim">*</span><span class="c-dim">$</span>        <span class="c-dim">&amp;</span>      <span class="c-cyan">%</span>  <span class="c-gray">:</span><span class="c-gray">-</span><span class="c-gray">-</span>  <span class="c-cyan">W</span>      <span class="c-dim">&amp;</span>        <span class="c-dim">$</span><span class="c-dim">*</span><span class="c-dim">+</span><span class="c-dim">+</span>
+                <span class="c-gray">=</span><span class="c-gray">=</span>          <span class="c-dim">&amp;</span><span class="c-dim">&amp;</span>     <span class="c-cyan">%</span><span class="c-cyan">%</span><span class="c-cyan">%</span><span class="c-cyan">%</span><span class="c-cyan">%</span><span class="c-gray">,</span><span class="c-gray">-</span><span class="c-gray">-</span><span class="c-cyan">#</span><span class="c-cyan">M</span><span class="c-cyan">W</span><span class="c-cyan">W</span><span class="c-cyan">8</span>     <span class="c-dim">&amp;</span><span class="c-dim">&amp;</span>       <span class="c-cyan">%</span>  <span class="c-gray">=</span><span class="c-gray">=</span>
+             <span class="c-gray">:</span><span class="c-gray">:</span><span class="c-gray">-</span><span class="c-gray">-</span>          <span class="c-dim">$</span><span class="c-dim">&amp;</span>    <span class="c-cyan">%</span><span class="c-cyan">%</span><span class="c-cyan">%</span><span class="c-cyan">%</span><span class="c-cyan">%</span><span class="c-cyan">%</span><span class="c-cyan">%</span><span class="c-cyan">%</span><span class="c-cyan">%</span><span class="c-cyan">#</span><span class="c-cyan">#</span><span class="c-cyan">M</span><span class="c-cyan">M</span><span class="c-cyan">W</span><span class="c-cyan">8</span><span class="c-cyan">8</span><span class="c-cyan">B</span>    <span class="c-dim">&amp;</span><span class="c-dim">$</span>          <span class="c-gray">-</span><span class="c-gray">-</span><span class="c-gray">:</span><span class="c-gray">:</span>
+           <span class="c-gray">.</span><span class="c-gray">.</span>             <span class="c-dim">$</span><span class="c-dim">$</span>    <span class="c-gray">:</span><span class="c-cyan">%</span><span class="c-cyan">%</span><span class="c-cyan">@</span><span class="c-cyan">@</span><span class="c-cyan">@</span><span class="c-cyan">@</span><span class="c-cyan">%</span><span class="c-gray">,</span><span class="c-cyan">%</span><span class="c-cyan">%</span><span class="c-cyan">#</span><span class="c-cyan">#</span><span class="c-cyan">M</span><span class="c-cyan">W</span><span class="c-cyan">8</span><span class="c-cyan">8</span><span class="c-cyan">B</span><span class="c-dim">&amp;</span>    <span class="c-dim">$</span><span class="c-dim">$</span>             <span class="c-gray">.</span><span class="c-gray">.</span>
+         <span class="c-gray">,</span><span class="c-gray">,</span>             <span class="c-dim">$</span><span class="c-dim">$</span><span class="c-dim">$</span>    <span class="c-cyan">%</span><span class="c-cyan">%</span><span class="c-gray">:</span><span class="c-cyan">%</span><span class="c-cyan">@</span><span class="c-cyan">@</span><span class="c-cyan">@</span><span class="c-cyan">@</span><span class="c-cyan">@</span><span class="c-cyan">@</span><span class="c-gray">,</span><span class="c-cyan">%</span><span class="c-cyan">#</span><span class="c-gray">,</span><span class="c-cyan">M</span><span class="c-gray">:</span><span class="c-cyan">8</span><span class="c-cyan">8</span><span class="c-cyan">B</span><span class="c-dim">&amp;</span><span class="c-dim">$</span>    <span class="c-dim">$</span><span class="c-dim">$</span><span class="c-dim">$</span>             <span class="c-gray">,</span><span class="c-gray">,</span>
+                       <span class="c-dim">*</span><span class="c-dim">$</span>     <span class="c-cyan">#</span><span class="c-cyan">#</span><span class="c-cyan">%</span><span class="c-cyan">%</span><span class="c-gray">-</span><span class="c-cyan">%</span><span class="c-cyan">@</span><span class="c-cyan">@</span><span class="c-cyan">@</span><span class="c-gray">:</span><span class="c-gray">-</span><span class="c-cyan">@</span><span class="c-cyan">%</span><span class="c-cyan">%</span><span class="c-cyan">#</span><span class="c-cyan">M</span><span class="c-cyan">W</span><span class="c-cyan">8</span><span class="c-cyan">B</span><span class="c-cyan">B</span><span class="c-dim">&amp;</span><span class="c-dim">$</span><span class="c-dim">*</span>     <span class="c-dim">$</span><span class="c-dim">*</span>
+                      <span class="c-dim">+</span><span class="c-dim">*</span>    <span class="c-gray">-</span> <span class="c-gray">,</span><span class="c-cyan">#</span><span class="c-cyan">#</span><span class="c-cyan">%</span><span class="c-gray">,</span><span class="c-cyan">%</span><span class="c-cyan">@</span><span class="c-cyan">@</span><span class="c-gray">,</span><span class="c-gray">,</span><span class="c-gray">-</span><span class="c-cyan">@</span><span class="c-cyan">%</span><span class="c-gray">:</span><span class="c-gray">,</span><span class="c-cyan">M</span><span class="c-gray">.</span><span class="c-gray">.</span><span class="c-cyan">B</span><span class="c-dim">&amp;</span><span class="c-dim">$</span><span class="c-dim">*</span><span class="c-dim">+</span>      <span class="c-dim">*</span><span class="c-dim">+</span>
+                     <span class="c-gray">=</span>       <span class="c-cyan">#</span><span class="c-cyan">M</span><span class="c-gray">,</span><span class="c-cyan">#</span><span class="c-gray">.</span><span class="c-cyan">%</span><span class="c-cyan">%</span><span class="c-cyan">%</span><span class="c-gray">,</span><span class="c-gray">.</span><span class="c-cyan">@</span><span class="c-cyan">@</span><span class="c-cyan">@</span><span class="c-cyan">@</span><span class="c-gray">.</span><span class="c-cyan">#</span><span class="c-cyan">M</span><span class="c-cyan">W</span><span class="c-cyan">8</span><span class="c-cyan">B</span><span class="c-dim">&amp;</span><span class="c-dim">$</span><span class="c-dim">*</span><span class="c-dim">+</span>        <span class="c-gray">=</span>
+                   <span class="c-gray">-</span><span class="c-gray">-</span>        <span class="c-cyan">W</span><span class="c-cyan">M</span><span class="c-cyan">M</span><span class="c-gray">.</span><span class="c-cyan">#</span><span class="c-cyan">#</span><span class="c-gray">.</span><span class="c-cyan">%</span><span class="c-cyan">%</span><span class="c-cyan">%</span><span class="c-cyan">@</span><span class="c-cyan">@</span><span class="c-cyan">@</span><span class="c-cyan">%</span><span class="c-cyan">#</span><span class="c-cyan">M</span><span class="c-cyan">W</span><span class="c-cyan">8</span><span class="c-cyan">B</span><span class="c-dim">&amp;</span><span class="c-dim">$</span><span class="c-dim">*</span><span class="c-dim">+</span><span class="c-gray">=</span><span class="c-gray">-</span>        <span class="c-gray">-</span><span class="c-gray">-</span>
+                  <span class="c-gray">:</span>           <span class="c-cyan">W</span><span class="c-cyan">W</span><span class="c-gray">:</span><span class="c-cyan">M</span><span class="c-cyan">M</span><span class="c-gray">,</span><span class="c-cyan">#</span><span class="c-gray">-</span><span class="c-cyan">%</span><span class="c-cyan">%</span><span class="c-cyan">%</span><span class="c-cyan">%</span><span class="c-cyan">#</span><span class="c-gray">:</span><span class="c-gray">.</span><span class="c-cyan">W</span><span class="c-gray">-</span><span class="c-gray">.</span><span class="c-dim">&amp;</span><span class="c-gray">-</span><span class="c-dim">+</span><span class="c-gray">.</span><span class="c-gray">-</span>           <span class="c-gray">:</span>
+                <span class="c-gray">.</span><span class="c-gray">.</span>            <span class="c-cyan">8</span><span class="c-cyan">8</span><span class="c-cyan">W</span><span class="c-cyan">W</span><span class="c-cyan">W</span><span class="c-cyan">M</span><span class="c-cyan">M</span><span class="c-cyan">M</span><span class="c-cyan">M</span><span class="c-cyan">M</span><span class="c-gray">,</span><span class="c-gray">,</span><span class="c-cyan">M</span><span class="c-gray">,</span><span class="c-cyan">8</span><span class="c-cyan">B</span><span class="c-cyan">B</span><span class="c-gray">:</span><span class="c-dim">$</span><span class="c-dim">*</span><span class="c-dim">+</span><span class="c-gray">=</span><span class="c-gray">-</span>            <span class="c-gray">.</span><span class="c-gray">.</span>
+               <span class="c-gray">,</span><span class="c-gray">.</span>             <span class="c-cyan">B</span><span class="c-cyan">B</span><span class="c-cyan">8</span><span class="c-cyan">8</span><span class="c-cyan">8</span><span class="c-gray">,</span><span class="c-cyan">W</span><span class="c-cyan">W</span><span class="c-cyan">W</span><span class="c-cyan">W</span><span class="c-cyan">W</span><span class="c-cyan">W</span><span class="c-cyan">8</span><span class="c-cyan">8</span><span class="c-gray">:</span><span class="c-gray">-</span><span class="c-dim">$</span><span class="c-gray">-</span><span class="c-gray">:</span><span class="c-dim">+</span><span class="c-gray">=</span><span class="c-gray">-</span><span class="c-gray">:</span>             <span class="c-gray">.</span><span class="c-gray">,</span>
+              <span class="c-gray">,</span><span class="c-gray">,</span>               <span class="c-dim">&amp;</span><span class="c-cyan">B</span><span class="c-cyan">B</span><span class="c-cyan">B</span><span class="c-cyan">B</span><span class="c-cyan">B</span><span class="c-cyan">B</span><span class="c-cyan">B</span><span class="c-gray">:</span><span class="c-cyan">B</span><span class="c-cyan">B</span><span class="c-gray">-</span><span class="c-dim">&amp;</span><span class="c-dim">$</span><span class="c-dim">$</span><span class="c-dim">*</span><span class="c-gray">.</span><span class="c-gray">=</span><span class="c-gray">-</span><span class="c-gray">:</span><span class="c-gray">:</span>               <span class="c-gray">,</span><span class="c-gray">,</span>
+                                <span class="c-dim">$</span><span class="c-dim">&amp;</span><span class="c-dim">&amp;</span><span class="c-gray">:</span><span class="c-dim">&amp;</span><span class="c-dim">&amp;</span><span class="c-dim">&amp;</span><span class="c-dim">&amp;</span><span class="c-dim">&amp;</span><span class="c-dim">$</span><span class="c-dim">$</span><span class="c-dim">*</span><span class="c-gray">:</span><span class="c-gray">,</span><span class="c-dim">+</span><span class="c-gray">=</span><span class="c-gray">-</span><span class="c-gray">:</span><span class="c-gray">.</span><span class="c-cyan">@</span>
+                                 <span class="c-dim">*</span><span class="c-dim">*</span><span class="c-gray">,</span><span class="c-dim">*</span><span class="c-dim">*</span><span class="c-dim">*</span><span class="c-gray">:</span><span class="c-dim">*</span><span class="c-dim">*</span><span class="c-dim">+</span><span class="c-dim">+</span><span class="c-gray">=</span><span class="c-gray">=</span><span class="c-gray">-</span><span class="c-gray">:</span><span class="c-gray">:</span><span class="c-gray">.</span>  <span class="c-gray">.</span>
+                                   <span class="c-dim">+</span><span class="c-dim">+</span><span class="c-dim">+</span><span class="c-dim">+</span><span class="c-dim">+</span><span class="c-gray">=</span><span class="c-gray">=</span><span class="c-gray">=</span><span class="c-gray">-</span><span class="c-gray">-</span><span class="c-gray">:</span><span class="c-gray">:</span><span class="c-gray">.</span>
+                                     <span class="c-gray">-</span><span class="c-gray">-</span><span class="c-gray">-</span><span class="c-gray">-</span><span class="c-gray">:</span><span class="c-gray">:</span><span class="c-gray">:</span><span class="c-gray">.</span><span class="c-gray">.</span>
+        </pre>
+        <div class="spider-box-cli">
+          <div class="box-line-magenta">┌─────────────────────┐</div>
+          <div class="box-line-magenta">│ <span class="box-title-bold">SPIDER MAPS SCRAPER</span> │</div>
+          <div class="box-line-magenta">│      <span class="box-subtitle">Perú · v2</span>      │</div>
+          <div class="box-line-magenta">└─────────────────────┘</div>
+          <div class="box-divider-gray">──────────────────────────────────────────────</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TARJETAS DE ESTADÍSTICAS -->
+    <section class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-icon">🗄️</span>
+        <span class="stat-label">Total en Base de Datos</span>
+        <div class="stat-value" id="statTotal">0</div>
+        <span class="stat-sub">Registros almacenados</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">📞</span>
+        <span class="stat-label">Con Teléfono</span>
+        <div class="stat-value text-accent" id="statTelefonos">0</div>
+        <span class="stat-sub">Maps o Web validados</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">💬</span>
+        <span class="stat-label">Con WhatsApp</span>
+        <div class="stat-value text-success" id="statWhatsapp">0</div>
+        <span class="stat-sub">Enlaces directos wa.me</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">✉️</span>
+        <span class="stat-label">Con Correo</span>
+        <div class="stat-value text-warning" id="statCorreos">0</div>
+        <span class="stat-sub">Incluye Cloudflare descifrado</span>
+      </div>
+    </section>
+
+    <!-- CUERPO PRINCIPAL -->
+    <main class="main-content">
+      <!-- PANEL IZQUIERDO: FORMULARIO DE BÚSQUEDA -->
+      <div class="control-panel card">
+        <h2 class="section-title">Configurar Extracción</h2>
+
+        <!-- CATEGORÍAS -->
+        <div class="form-group">
+          <label>Categorías del Negocio</label>
+          <div class="chips-input-container" id="containerCategorias">
+            <div class="chips-list" id="chipsCategorias"></div>
+            <input type="text" id="inputCategoria" placeholder="Escribe y presiona Enter (ej. veterinaria)">
+          </div>
+          <div class="quick-pills">
+            <span class="pill-title">Sugerencias:</span>
+            <button class="pill-btn" data-cat="veterinaria">+ Veterinaria</button>
+            <button class="pill-btn" data-cat="restaurante">+ Restaurante</button>
+            <button class="pill-btn" data-cat="clinica dental">+ Dental</button>
+            <button class="pill-btn" data-cat="farmacia">+ Farmacia</button>
+            <button class="pill-btn" data-cat="gimnasio">+ Gimnasio</button>
+            <button class="pill-btn" data-cat="hotel">+ Hotel</button>
+          </div>
+        </div>
+
+        <!-- DISTRITOS -->
+        <div class="form-group">
+          <label>Distritos o Ciudades</label>
+          <div class="chips-input-container" id="containerDistritos">
+            <div class="chips-list" id="chipsDistritos"></div>
+            <input type="text" id="inputDistrito" placeholder="Escribe y presiona Enter (ej. Miraflores)">
+          </div>
+          <div class="quick-pills">
+            <span class="pill-title">Lima Rápido:</span>
+            <button class="pill-btn" data-dist="Miraflores">+ Miraflores</button>
+            <button class="pill-btn" data-dist="San Isidro">+ San Isidro</button>
+            <button class="pill-btn" data-dist="Barranco">+ Barranco</button>
+            <button class="pill-btn" data-dist="Surco">+ Surco</button>
+            <button class="pill-btn" data-dist="San Borja">+ San Borja</button>
+            <button class="pill-btn" data-dist="La Molina">+ La Molina</button>
+          </div>
+        </div>
+
+        <!-- AJUSTES Y MODO -->
+        <div class="form-row">
+          <div class="form-group col">
+            <label for="selectMax">Resultados por búsqueda</label>
+            <select id="selectMax" class="form-control">
+              <option value="10">10 negocios (Prueba rápida)</option>
+              <option value="25">25 negocios (Recomendado)</option>
+              <option value="50" selected>50 negocios</option>
+              <option value="100">100 negocios</option>
+            </select>
+          </div>
+          <div class="form-group col">
+            <label for="selectModo">Modo de Extracción</label>
+            <select id="selectModo" class="form-control">
+              <option value="turbo" selected>⚡ Turbo (HTTP Rápido 5x - 10x)</option>
+              <option value="deep">🔍 Revisión Profunda (Inspección Completa)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- BOTONES DE ACCIÓN -->
+        <div class="actions-group">
+          <button id="btnIniciar" class="btn btn-primary btn-lg">
+            ▶ Iniciar Extracción
+          </button>
+          <button id="btnDetener" class="btn btn-danger btn-lg" disabled>
+            ⏹ Detener
+          </button>
+        </div>
+
+        <!-- BARRA DE PROGRESO Y LOGS EN VIVO -->
+        <div class="progress-box">
+          <div class="progress-header">
+            <span id="progressText">Estado: En espera</span>
+            <span id="progressPercent">0%</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="progressBar"></div>
+          </div>
+        </div>
+
+        <div class="console-box">
+          <div class="console-header">
+            <div class="console-dots">
+              <span class="dot-red"></span>
+              <span class="dot-yellow"></span>
+              <span class="dot-green"></span>
+            </div>
+            <span>Terminal de Eventos</span>
+            <button id="btnLimpiarLogs" class="btn-link">Limpiar</button>
+          </div>
+          <div class="console-logs" id="consoleLogs">
+            <div class="log-line text-muted">[Sistema] Panel web listo. Configura tu búsqueda y haz clic en Iniciar.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PANEL DERECHO: TABLA DE PROSPECTOS EN TIEMPO REAL -->
+      <div class="results-panel card">
+        <div class="results-header">
+          <div>
+            <h2 class="section-title">Negocios Extraídos en Tiempo Real</h2>
+            <p class="section-subtitle">Los datos se guardan al instante en contactos.db</p>
+          </div>
+          <div class="results-actions">
+            <input type="text" id="filtroTabla" class="input-search" placeholder="🔍 Filtrar en tabla...">
+            <button id="btnDescargarExcel" class="btn btn-success btn-sm">
+              📥 Excel
+            </button>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table class="leads-table" id="tablaLeads">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Categoría</th>
+                <th>Teléfono</th>
+                <th>WhatsApp</th>
+                <th>Correo</th>
+                <th>Redes Sociales</th>
+                <th>Web / Maps</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyLeads">
+              <tr>
+                <td colspan="8" class="text-center text-muted">Cargando registros recientes...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
