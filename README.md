@@ -1,286 +1,155 @@
-# Spider Maps Scraper - Perú
+# Spider Maps Scraper - Perú · v2.0 Turbo 🕷️
 
 ![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?logo=node.js&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Status](https://img.shields.io/badge/status-activo-brightgreen)
+![Tests](https://img.shields.io/badge/tests-30%20passing-success)
 
-Herramienta para recolectar datos de contacto de negocios desde Google Maps. Diseñada para proyectos de prospección y logística con interfaz web interactiva en tiempo real y motor Turbo de alta velocidad.
-
----
-
-## 🚀 Novedades v2.0 Turbo
-
-- 🌐 **Panel Web Local (`http://localhost:3000`):** Configura categorías y distritos con chips interactivos, mira el progreso en tiempo real y descarga tu Excel con un clic.
-- ⚡ **Motor Turbo (5x a 10x más rápido):** Peticiones HTTP ultrarrápidas con cabeceras reales que eliminan los errores 406/403.
-- 🛡️ **Anti-Detección Stealth:** Integración con `puppeteer-extra-plugin-stealth` para evitar bloqueos por tráfico inusual en Google Maps.
-- 🔓 **Decodificador Cloudflare:** Recupera correos ofuscados con `data-cfemail` y botones flotantes de WhatsApp.
-- 🖱️ **Doble clic en Windows:** Inicia con `iniciar.bat` sin necesidad de comandos.
+Herramienta de alto rendimiento para recolectar y enriquecer datos de contacto de negocios desde Google Maps. Diseñada para proyectos de prospección comercial, marketing B2B y logística, equipada con un **Panel de Control Web interactivo en tiempo real**, arquitectura modular y **motor Turbo**.
 
 ---
 
-## ¿Qué extrae?
+## 🚀 Novedades de la Versión 2.0 Turbo
 
-| Campo | Fuente |
-|---|---|
-| Nombre del negocio | Google Maps |
-| Categoría | Configurada por el usuario (exacta) |
-| Valoración | Google Maps |
-| Dirección | Google Maps |
-| Teléfono | Google Maps + Web del negocio |
-| Correo electrónico | Web del negocio (incluye Cloudflare decodificado) |
-| WhatsApp | Web del negocio (enlaces y widgets flotantes) |
-| Instagram | Web del negocio |
-| Facebook | Web del negocio |
-| TikTok | Web del negocio |
-| URL de Maps | Google Maps |
+- 🌐 **Panel Web Moderno (`http://localhost:3000`):** Configura categorías y distritos mediante etiquetas/chips interactivos, visualiza eventos en una consola en vivo y mira los prospectos aparecer en tiempo real mediante SSE (Server-Sent Events).
+- ⚡ **Modo Turbo (HTTP Rápido 5x a 10x):** Peticiones optimizadas con cabeceras de navegador reales (`Sec-Ch-Ua`, rotación de `User-Agent`) erradicando bloqueos y errores 406/403.
+- 🔍 **Modo Revisión Profunda:** Inspección completa con fallback inteligente para sitios dinámicos pesados o dependientes de renderizado cliente.
+- 🛡️ **Anti-Detección Stealth:** Integración nativa con `puppeteer-extra-plugin-stealth` para evitar bloqueos por tráfico automatizado o captchas de Google Maps.
+- 🔓 **Decodificador Cloudflare & Widgets:** Descifra correos protegidos con algoritmos XOR (`/cdn-cgi/l/email-protection` y `data-cfemail`), botones flotantes (Joinchat) y enlaces de WhatsApp (`wa.me`, `wa.link`).
+- 📁 **Exportador Excel Integrado:** Botón directo en la tabla de prospectos para descargar el archivo `contactos.xlsx` estilizado con filtros automáticos.
+- 🖱️ **Lanzador en un clic:** Archivo `iniciar.bat` para arrancar en Windows sin necesidad de abrir terminales manualmente.
 
 ---
 
-## ¿Cómo funciona?
+## 📊 ¿Qué datos extrae?
+
+| Campo | Origen | Descripción |
+|---|---|---|
+| **Nombre** | Google Maps | Nombre comercial limpio de caracteres especiales |
+| **Categoría** | Búsqueda | Categoría asignada o definida por el usuario |
+| **Valoración** | Google Maps | Calificación promedio (ej. 4.8) |
+| **Dirección** | Google Maps | Ubicación física del local |
+| **Teléfono Maps** | Google Maps | Teléfono verificado normalizado para Perú |
+| **Teléfono Web** | Web del negocio | Números extraídos de cabeceras, pie de página o enlaces `tel:` |
+| **WhatsApp** | Web del negocio | Enlaces directos a chats `wa.me` o widgets flotantes |
+| **Correo** | Web del negocio | Correos corporativos (incluye decodificación de Cloudflare) |
+| **Instagram** | Web / Maps | Handles y perfiles limpios de usuario |
+| **Facebook** | Web / Maps | Fanpages de negocios filtradas |
+| **TikTok** | Web / Maps | Perfiles oficiales de TikTok |
+| **Web** | Google Maps | Sitio web oficial o red social principal |
+| **URL Maps** | Google Maps | Enlace directo a la ficha del negocio |
+| **Método** | Sistema | `maps` (solo ficha) o `maps+web` (enriquecido con sitio web) |
+| **Estado** | Sistema | `OK`, `Sin web`, `Red social/agregador` o detalle de error |
+
+---
+
+## ⚙️ Arquitectura del Motor
 
 ```
-Panel Web / CLI (categorías × distritos)
-        ↓
-Google Maps (Stealth + Bloqueo de recursos pesados) → lista de enlaces
-        ↓
-Pool de pestañas concurrentes → extrae datos básicos de Maps
-        ↓
-Modo Turbo (HTTP Fetch rápido con cabeceras reales) / Modo Profundo
-        ↓
-Decodifica correos Cloudflare + Widgets flotantes + Subpáginas de contacto
-        ↓
-Almacena en SQLite (contactos.db) → exporta a contactos.xlsx
-        ↓
-Streaming en vivo (SSE) a la tabla del panel web
+[Usuario: Panel Web o CLI]
+         │
+         ▼
+[Google Maps con Stealth Engine] ───► Extrae enlaces y fichas básicas
+         │
+         ▼
+[Pool Concurrente de Pestañas] ────► Lectura paralela de detalles
+         │
+         ▼
+[Motor de Enriquecimiento] ────────► Modo Turbo (HTTP Fetch) o Revisión Profunda
+         │                           ├─ Cloudflare Email Decoder (XOR)
+         │                           ├─ Extracción de WhatsApp y Redes Sociales
+         │                           └─ Subpáginas (/contacto, /nosotros)
+         │
+         ▼
+[Persistencia SQLite WAL] ─────────► Deduplicación automática (contactos.db)
+         │
+         ├─────────────────────────► Transmisión SSE en vivo a la Web
+         └─────────────────────────► Generación de reporte Excel (contactos.xlsx)
 ```
 
 ---
 
-## Instalación y Uso
+## 📦 Instalación y Uso Rápido
 
-**Requisitos:** Node.js 18 o superior
+### Requisitos
+- **Node.js 18 o superior** instalado ([nodejs.org](https://nodejs.org/)).
 
+### 1. Clonar e Instalar
 ```bash
-# 1. Clona el repositorio
+# Clonar el repositorio
 git clone https://github.com/C1FR4/spider-maps-scraper.git
-
-# 2. Instala las dependencias
 cd spider-maps-scraper
+
+# Instalar dependencias
 npm install
+```
 
-# 3. Inicia el Panel Web (Abre automáticamente tu navegador en http://localhost:3000)
+### 2. Ejecutar
+
+#### Opción A: Modo Web (Recomendado)
+Inicia el servidor local y abre automáticamente tu navegador:
+```bash
 npm start
-
-# O en Windows: simplemente haz doble clic en iniciar.bat
 ```
+*O en Windows:* Simplemente haz doble clic en el archivo **`iniciar.bat`**.
 
-> **¿Prefieres usar la consola clásica?**  
-> Puedes seguir usando el modo interactivo por terminal ejecutando:  
-> ```bash
-> npm run cli
-> ```
+Accede al panel en cualquier momento desde: **`http://localhost:3000`**
 
-### Instalación alternativa con pnpm
-
-Si prefieres usar **pnpm** en lugar de npm:
-
+#### Opción B: Modo Terminal Clásico (CLI)
+Si prefieres usar la consola interactiva original:
 ```bash
-# 1. Instala pnpm si no lo tienes
-npm install -g pnpm
-
-# 2. Clona el repositorio e instala dependencias
-git clone https://github.com/C1FR4/spider-maps-scraper.git
-cd spider-maps-scraper
-pnpm install
+npm run cli
 ```
-
-El archivo `package.json` incluye la configuración `pnpm.onlyBuiltDependencies` para autorizar los scripts de instalación de `better-sqlite3` (compila módulo nativo) y `puppeteer` (descarga Chromium). Sin embargo, **en versiones recientes de pnpm ese campo ya no se lee automáticamente** (pnpm lo movió a `pnpm-workspace.yaml` y muestra un warning al respecto), así que es probable que al correr `pnpm install` veas algo como:
-
-```
-[WARN] The "pnpm" field in package.json is no longer read by pnpm.
-[ERR_PNPM_IGNORED_BUILDS] Ignored build scripts: better-sqlite3@..., puppeteer@...
-```
-
-**Solución:** si los builds se ignoran, ejecuta `pnpm approve-builds` y aprueba `better-sqlite3` y `puppeteer` manualmente:
-
-```bash
-pnpm approve-builds
-```
-
-Después vuelve a intentar `pnpm install` si es necesario, y `pnpm start` ya debería funcionar con normalidad.
-
-El resto del proyecto (comandos para correr el scraper, configuración, etc.) es idéntico sin importar qué gestor de paquetes uses para instalar.
-
-> **Nota para Windows:** Durante el scraping, **pulsar cualquier tecla** (una letra, espacio, etc.) abre el menú interactivo de pausa con las opciones `[c] Continuar` / `[t] Terminar y exportar`. **Ctrl+C es distinto**: no pasa por ese menú — cierra el navegador y la base de datos de forma limpia y termina el programa directamente, sin preguntar nada.
->
-> Si usas `npm start` desde el **Símbolo del sistema clásico (cmd.exe)** y presionas Ctrl+C, puede aparecer el mensaje `"¿Desea terminar el trabajo por lotes (S/N)?"`. Esto es comportamiento de Windows/npm, no del scraper. Recomendaciones:
-> - Ejecuta con `node scraper.js` directamente (en vez de `npm start`) para que la app reciba bien las pulsaciones de teclado, sin la capa intermedia de npm envolviendo el proceso.
-> - O usa **PowerShell** o **Windows Terminal** en vez de cmd.exe — no tienen ese mensaje heredado.
-> - Pase lo que pase, los datos ya recolectados están guardados en `contactos.db`. Siempre puedes recuperarlos con:
->   ```bash
->   node scraper.js --export
->   ```
->   Esto genera el Excel con todo lo recolectado hasta el momento sin volver a scrapear. Los términos ya completados se saltarán solos al reanudar.
 
 ---
 
-## Solución de problemas
+## 🧪 Pruebas Automatizadas
 
-### Error: "Could not find Chrome"
-
-Si al ejecutar `node scraper.js` (o `npm start` / `pnpm start`) aparece:
-
-```
-Error: Could not find Chrome (ver. XXX.X.XXXX.XX). This can occur if either
- 1. you did not perform an installation before running the script (e.g. `npx puppeteer browsers install chrome`) or
- 2. your cache path is incorrectly configured...
-```
-
-Significa que **Puppeteer no descargó Chromium durante la instalación**. Esto puede ocurrir tanto con `npm install` como con `pnpm install` (por ejemplo, si el postinstall se interrumpió, hubo un problema de red, o con pnpm la descarga quedó pendiente de una corrida anterior).
-
-**Solución:** Desde la raíz del proyecto, ejecuta:
+El proyecto cuenta con una suite completa de pruebas unitarias para validar sanitización de correos, números peruanos y decodificadores:
 
 ```bash
-npx puppeteer browsers install chrome
+npm test
 ```
-
-Después vuelve a intentar `node scraper.js` (o `npm start` / `pnpm start`) con normalidad.
-
-### Vulnerabilidad `uuid` en `npm audit`
-
-Al correr `npm audit` puede aparecer **1 vulnerabilidad moderada** relacionada con el paquete `uuid`:
-
-```
-uuid  <11.1.1
-Severity: moderate
-uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided
-```
-
-**Origen:** viene directo de `exceljs@4.4.0` (la dependencia de exportación a Excel del proyecto, ya en su versión más reciente disponible) — no es código propio del scraper.
-
-**Estado:** no tiene solución sin degradar `exceljs` a una versión mayor anterior (`3.4.0`), lo cual rompería la generación del Excel. Por eso se deja así intencionalmente.
-
-**Acción requerida:** ninguna. Es informativo; quien clona el repo no necesita hacer nada.
+*Garantiza 30 tests unitarios pasando sin errores.*
 
 ---
 
-## Configuración
+## 🛠️ Configuración Avanzada (`config.json`)
 
-### Categorías y distritos
+Puedes personalizar parámetros generales editando `config.json`:
 
-El programa te pedirá ingresar **tus propias categorías y distritos** al iniciar.  
-Escribe los valores separados por coma - puedes poner tantos como necesites:
-
+```json
+{
+  "archivoExcel": "contactos.xlsx",
+  "maxResultadosPorBusqueda": 50,
+  "esperaMsEntreBusquedas": 3000,
+  "concurrencia": 6,
+  "concurrenciaFichas": 3,
+  "palabrasContacto": ["contacto", "contactenos", "ubicacion", "locales"]
+}
 ```
-?  Categorías a buscar [1/2]
-   › Cafetería, Restaurante peruano, Tienda de ropa
 
-?  Distritos a buscar [2/2]
-   › Miraflores Lima, Barranco Lima, San Isidro Lima
-```
+---
 
-Cada combinación de categoría × distrito genera una búsqueda en Google Maps.  
-Por ejemplo, con 3 categorías y 3 distritos se ejecutarán 9 búsquedas.
+## 💡 Conceptos Clave de Clasificación
 
-> **Modo no interactivo** (sin prompts): `node scraper.js --categorias "Cafetería, Restaurante" --distritos "Miraflores, Barranco"` — salta la configuración interactiva y arranca directo.
+- **`OK`:** El negocio cuenta con página web accesible y fue inspeccionada exitosamente.
+- **`Sin web`:** La ficha de Maps no tiene sitio web asociado.
+- **`Red social/agregador`:** El negocio colocó un enlace directo a su Facebook, Instagram o Linktree como sitio web; el scraper lo clasifica en la columna adecuada sin forzar peticiones que puedan generar bloqueos.
 
-### Parámetros adicionales (`config.json`)
+---
 
-Se pueden ajustar en `config.json` sin necesidad de editar categorías ni distritos:
+## 📋 Resumen de Scripts
 
-| Parámetro | Descripción | Default |
+| Script | Descripción | Comando |
 |---|---|---|
-| `archivoExcel` | Nombre del archivo de salida | `contactos.xlsx` |
-| `maxResultadosPorBusqueda` | Negocios máximos por término de búsqueda | `50` |
-| `visitarWebDelNegocio` | Enriquecer con datos de la web | `true` |
-| `esperaMsEntreBusquedas` | Pausa entre búsquedas (ms) | `3000` |
-| `umbralTextoUtil` | Mínimo de texto para considerar página válida | `400` |
-| `concurrencia` | Cuántas webs visita en paralelo | `5` |
-| `concurrenciaFichas` | Cuántas fichas de Maps extrae en paralelo | `4` |
-| `palabrasContacto` | Palabras clave para detectar subpáginas de contacto | `[contacto, contactenos, ...]` |
-| `palabrasLocalPlaceholder` | Frases en la parte local del correo a descartar | `[noreply, placeholder, dummy, ...]` |
-| `dominiosPlaceholder` | Dominios completos a descartar como correo | `[example.com, test.com, ...]` |
-| `agregadoresLinkInBio` | Dominios agregadores que no se scrapean | `[linktr.ee, beacons.ai, ...]` |
+| `src/server.js` | Servidor Express con API REST, SSE y panel web | `npm start` |
+| `scraper.js` | Scraper interactivo clásico para terminal | `npm run cli` |
+| `check_db.js` | Inspección rápida por consola de los datos en SQLite | `node check_db.js` |
+| `test/validadores.test.js`| Batería de tests unitarios de validación | `npm test` |
 
 ---
 
-## Output
+## ⚠️ Disclaimer
 
-Genera `contactos.xlsx` con:
-
-- Incluye **Método** (`maps` / `maps+web`) para saber si el dato salió solo de la ficha de Maps o también se enriqueció visitando la web del negocio.
-- Encabezado azul oscuro con texto blanco, fila congelada
-- Filas con colores alternos (blanco / azul claro)
-- Filtros automáticos en todas las columnas
-- Categoría exacta como la configuró el usuario
-- Teléfonos normalizados (sin prefijo +51)
-- Enlaces directos (WhatsApp, redes sociales)
-
----
-
-## Características
-
-- **Fetch-first**: intenta obtener la web con `fetch` (rápido); si la página requiere JS, cae automáticamente a Puppeteer.
-- **Extracción paralela de fichas**: pool de 4 páginas de Puppeteer extrayendo fichas de Maps simultáneamente.
-- **Pool persistente**: las páginas se crean una vez y se reúsan entre términos de búsqueda.
-- **Reanudación automática**: si el proceso se interrumpe, al retomar salta los términos ya procesados (basado en SQLite).
-- **Detección de bloqueo**: si Google detecta tráfico automatizado, espera 60s y reintenta una vez antes de fallar controladamente.
-- **Extracción desde URL social**: si un negocio tiene Instagram/Facebook como su "sitio web" en Maps, el handle se extrae directamente.
-- **Filtro de redes sociales**: descarta enlaces falsos de Facebook (login, share, recover, photo, l.php, messages, events, etc.) y WhatsApp sin número.
-- **Filtro de correos basura**: descarta dominios de tracking (Sentry, Hotjar, Klaviyo, etc.) y extensiones de archivo.
-- **Normalización de teléfonos**: elimina prefijo +51, 51 y 0 de números peruanos.
-- **Pausas aleatorias**: agrega delays variables para simular comportamiento humano.
-- **Sin API keys**: no requiere claves ni proxies pagados.
-- **Exportación directa**: `node scraper.js --export` genera el Excel desde la BD sin volver a scrapear.
-- **Presionar cualquier tecla para pausar**: menú interactivo con opciones para continuar, terminar y exportar.
-
----
-
-## Scripts opcionales
-
-### retry_406_urls.py
-
-**Qué hace:** reintenta con Python (`urllib.request`) las webs que el scraper principal no pudo leer por error HTTP 406 (bloqueo por User-Agent/headers), usando headers más completos y rotación de User-Agent.
-
-**Cuándo usarlo:** después de una corrida completa, si hay negocios con web pero sin teléfono/correo extraído.
-
-**Cómo se usa:** `python retry_406_urls.py` desde la raíz del proyecto (solo librería estándar de Python 3, sin instalar nada extra). Actualiza `contactos.db` vía un subproceso de Node, solo llenando campos vacíos, nunca sobreescribe datos ya extraídos.
-
-**Limitación conocida:** recorre todas las webs guardadas en cada corrida, no lleva registro de cuáles ya reintentó.
-
----
-
-### check_db.js
-
-**Qué hace:** vuelca por consola todos los campos de cada negocio guardado en `contactos.db`.
-
-**Para qué sirve:** inspección rápida sin abrir el Excel ni un cliente de SQLite — útil para depurar por qué un negocio quedó sin correo, por ejemplo.
-
-**Cómo se usa:** `node check_db.js` desde la raíz del proyecto, sin argumentos.
-
-**Nota:** imprime todos los registros sin paginar, pensado para inspección puntual, no para datasets masivos.
-
----
-
-## Tiempo estimado
-
-Para 30 términos (ej: 3 categorías × 10 distritos) y ~500 negocios:
-
-| Fase | Por término |
-|---|---|---|
-| Maps scroll + enlaces | ~15s |
-| Fichas en paralelo | ~20s |
-| Enriquecimiento web | ~60–90s |
-| **Total estimado** | **20–25 minutos** |
-
----
-
-## Disclaimer
-
-Este proyecto se proporciona exclusivamente con **fines educativos y de investigación**. El scraping automatizado de Google Maps puede violar sus [Términos de Servicio](https://policies.google.com/terms). 
-
-El mantenedor de este repositorio **no se responsabiliza** por el uso que terceros hagan de esta herramienta. Úsala bajo tu propio criterio y responsabilidad.
-
----
-
-
+Este proyecto se proporciona con fines de investigación, desarrollo y optimización de flujos de datos. El scraping automatizado de plataformas web debe realizarse respetando las leyes de protección de datos aplicables y los términos de servicio correspondientes. Úsalo con responsabilidad.
