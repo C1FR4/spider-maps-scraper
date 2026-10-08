@@ -1,9 +1,13 @@
 # Spider Maps Scraper - Perú · v2.0 Turbo 🕷️
 
+[![English](https://img.shields.io/badge/Language-English-blue.svg)](README_EN.md)
+[![Español](https://img.shields.io/badge/Idioma-Español-brightgreen.svg)](README.md)
 ![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?logo=node.js&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Status](https://img.shields.io/badge/status-activo-brightgreen)
 ![Tests](https://img.shields.io/badge/tests-30%20passing-success)
+
+> [🇺🇸 Read English Documentation](README_EN.md)
 
 Herramienta de alto rendimiento para recolectar y enriquecer datos de contacto de negocios desde Google Maps. Diseñada para proyectos de prospección comercial, marketing B2B y logística, equipada con un **Panel de Control Web interactivo en tiempo real**, arquitectura modular y **motor Turbo**.
 
