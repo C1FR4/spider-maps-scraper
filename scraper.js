@@ -120,6 +120,7 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nombre TEXT DEFAULT '',
     categoria TEXT DEFAULT '',
+    zona_busqueda TEXT DEFAULT '',
     valoracion TEXT DEFAULT '',
     telefono_maps TEXT DEFAULT '',
     telefono_web TEXT DEFAULT '',
@@ -139,9 +140,9 @@ db.exec(`
 `);
 
 // Columnas de fuente/confianza (segura para re-ejecución)
-const columnasFuente = ['fuente_instagram', 'fuente_facebook', 'fuente_tiktok'];
-for (const col of columnasFuente) {
-  try { db.exec(`ALTER TABLE negocios ADD COLUMN ${col} TEXT DEFAULT ''`); } catch (_) {}
+const columnas = new Set(db.pragma('table_info(negocios)').map(({ name }) => name));
+for (const col of ['fuente_instagram', 'fuente_facebook', 'fuente_tiktok', 'zona_busqueda']) {
+  if (!columnas.has(col)) db.exec(`ALTER TABLE negocios ADD COLUMN ${col} TEXT DEFAULT ''`);
 }
 
 // Índices para acelerar deduplicación
@@ -163,12 +164,12 @@ const existeDuplicado = db.prepare(`
 
 const insertNegocio = db.prepare(`
   INSERT INTO negocios (
-    nombre, categoria, valoracion, telefono_maps, telefono_web,
+    nombre, categoria, zona_busqueda, valoracion, telefono_maps, telefono_web,
     correo, whatsapp, instagram, facebook, tiktok,
     direccion, web, url_maps, busqueda, metodo, estado,
     fuente_instagram, fuente_facebook, fuente_tiktok
   ) VALUES (
-    @nombre, @categoria, @valoracion, @telefono_maps, @telefono_web,
+    @nombre, @categoria, @zona_busqueda, @valoracion, @telefono_maps, @telefono_web,
     @correo, @whatsapp, @instagram, @facebook, @tiktok,
     @direccion, @web, @url_maps, @busqueda, @metodo, @estado,
     @fuente_instagram, @fuente_facebook, @fuente_tiktok
@@ -190,6 +191,7 @@ function guardarNegocio(datos) {
   insertNegocio.run({
     nombre: datos.Nombre || '',
     categoria: datos.Categoría || '',
+    zona_busqueda: datos.ZonaBusqueda || '',
     valoracion: datos.Valoración || '',
     telefono_maps: datos['Teléfono Maps'] || '',
     telefono_web: datos['Teléfono Web'] || '',
@@ -237,7 +239,7 @@ function generarTerminosDeBusqueda() {
   const terminos = [];
   for (const categoria of CONFIG.CATEGORIAS) {
     for (const distrito of CONFIG.DISTRITOS) {
-      terminos.push({ termino: `${categoria} ${distrito}`, categoria });
+      terminos.push({ termino: `${categoria} ${distrito}`, categoria, distrito });
     }
   }
   return terminos;
@@ -1059,6 +1061,7 @@ async function guardarExcel(datos, ruta) {
   ws.columns = [
     { header: "Nombre", key: "Nombre", width: 35 },
     { header: "Categoría", key: "Categoría", width: 25 },
+    { header: "Distrito / ciudad", key: "ZonaBusqueda", width: 30 },
     { header: "Valoración", key: "Valoración", width: 12 },
     { header: "Teléfono Maps", key: "Teléfono Maps", width: 22 },
     { header: "Teléfono Web", key: "Teléfono Web", width: 22 },
@@ -1102,7 +1105,7 @@ async function guardarExcel(datos, ruta) {
     row.alignment = { vertical: "middle" };
   });
 
-  ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 16 } };
+  ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: ws.columnCount } };
   ws.views = [{ state: "frozen", ySplit: 1 }];
 
   await wb.xlsx.writeFile(ruta);
@@ -1112,7 +1115,7 @@ async function guardarExcel(datos, ruta) {
 
 async function exportarExcel() {
   const todos = db.prepare(
-    `SELECT nombre, categoria, valoracion, telefono_maps, telefono_web,
+    `SELECT nombre, categoria, zona_busqueda, valoracion, telefono_maps, telefono_web,
             correo, whatsapp, instagram, facebook, tiktok,
             direccion, web, url_maps, busqueda, metodo, estado
      FROM negocios ORDER BY id`
@@ -1132,6 +1135,7 @@ async function exportarExcel() {
   const exportData = unicos.map((r) => ({
     Nombre: r.nombre || "—",
     Categoría: r.categoria || "—",
+    ZonaBusqueda: r.zona_busqueda || "—",
     Valoración: r.valoracion || "—",
     "Teléfono Maps": r.telefono_maps || "—",
     "Teléfono Web": r.telefono_web || "—",
@@ -1323,7 +1327,7 @@ async function main() {
 
   try {
     for (let i = 0; i < terminos.length; i++) {
-      const { termino, categoria: catUsuario } = terminos[i];
+      const { termino, categoria: catUsuario, distrito } = terminos[i];
       console.log(`\n[Busqueda ${i + 1}/${terminos.length}] "${termino}"`);
 
       // Reanudación: saltar si ya fue procesado
@@ -1340,6 +1344,7 @@ async function main() {
         guardarNegocio({
           Nombre: "ERROR-BUSQUEDA",
           Categoría: catUsuario,
+          ZonaBusqueda: distrito,
           Búsqueda: termino,
           Estado: err.message.slice(0, 100),
         });
@@ -1376,6 +1381,7 @@ async function main() {
           guardarNegocio({
             Nombre: "ERROR-BUSQUEDA",
             Categoría: catUsuario,
+            ZonaBusqueda: distrito,
             Búsqueda: termino,
             Estado: "Bloqueo persistente en extracción de fichas",
           });
@@ -1392,6 +1398,7 @@ async function main() {
       const resultados = await Promise.all(promises);
 
       for (const datos of resultados) {
+        datos.ZonaBusqueda = distrito;
         guardarNegocio(datos);
       }
 

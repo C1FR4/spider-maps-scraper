@@ -292,6 +292,7 @@ class ScraperEngine extends EventEmitter {
               };
             }
             try {
+              res.ZonaBusqueda = item.distrito;
               if (typeof res.Estado === "string" && res.Estado.startsWith("Web:")) {
                 this.estadisticas.errores++;
               }

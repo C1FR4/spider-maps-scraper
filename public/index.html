@@ -18,7 +18,7 @@
         <span class="nav-label">Panel local activo</span>
       </div>
       <div class="nav-actions">
-        <span class="badge-version">Perú · v2.1.0 Turbo</span>
+        <span class="badge-version">Perú · v2.2.0 Turbo</span>
         <button id="btnApagarServidor" class="btn btn-secondary btn-sm" title="Detener el servidor local por completo">
           ⏻ Apagar Servidor
         </button>
@@ -71,7 +71,7 @@
         <div class="spider-box-cli">
           <div class="box-line-magenta">┌─────────────────────┐</div>
           <div class="box-line-magenta">│ <span class="box-title-bold">SPIDER MAPS SCRAPER</span> │</div>
-          <div class="box-line-magenta">│      <span class="box-subtitle">Perú · v2.1</span>      │</div>
+          <div class="box-line-magenta">│      <span class="box-subtitle">Perú · v2.2</span>      │</div>
           <div class="box-line-magenta">└─────────────────────┘</div>
           <div class="box-divider-gray">──────────────────────────────────────────────</div>
         </div>
@@ -232,6 +232,9 @@
           </div>
           <div class="results-actions">
             <input type="text" id="filtroTabla" class="input-search" placeholder="🔍 Filtrar en tabla...">
+            <select id="filtroZona" class="input-search" aria-label="Filtrar por distrito o ciudad de búsqueda">
+              <option value="">Todos los distritos / ciudades</option>
+            </select>
             <select id="filtroContacto" class="input-search" aria-label="Filtrar registros por datos disponibles">
               <option value="todos">Todos los registros</option>
               <option value="telefono">Con teléfono</option>
@@ -255,6 +258,7 @@
               <tr>
                 <th>Nombre</th>
                 <th>Categoría</th>
+                <th>Distrito / ciudad</th>
                 <th>Teléfono</th>
                 <th>WhatsApp</th>
                 <th>Correo</th>
@@ -265,7 +269,7 @@
             </thead>
             <tbody id="tbodyLeads">
               <tr>
-                <td colspan="8" class="text-center text-muted">Cargando registros recientes...</td>
+                <td colspan="9" class="text-center text-muted">Cargando registros recientes...</td>
               </tr>
             </tbody>
           </table>

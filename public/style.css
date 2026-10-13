@@ -830,9 +830,10 @@ body {
 .main-content { align-items: start; }
 .results-panel { min-height: 360px; }
 .table-container { max-height: 480px; }
-.leads-table { min-width: 1050px; }
+.leads-table { min-width: 1200px; }
 .leads-table td:nth-child(3) { min-width: 145px; }
-.leads-table td:nth-child(4), .leads-table td:nth-child(5) { min-width: 155px; }
+.leads-table td:nth-child(4) { min-width: 145px; }
+.leads-table td:nth-child(5), .leads-table td:nth-child(6) { min-width: 155px; }
 .leads-table td small { color: #6dd9f4; font: 700 10px var(--font-mono); }
 
 @media (max-width: 700px) {

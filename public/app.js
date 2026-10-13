@@ -27,6 +27,7 @@ const consoleLogs = document.getElementById("consoleLogs");
 const btnLimpiarLogs = document.getElementById("btnLimpiarLogs");
 const tbodyLeads = document.getElementById("tbodyLeads");
 const filtroTabla = document.getElementById("filtroTabla");
+const filtroZona = document.getElementById("filtroZona");
 const filtroContacto = document.getElementById("filtroContacto");
 const contadorFilas = document.getElementById("contadorFilas");
 const resumenBusqueda = document.getElementById("resumenBusqueda");
@@ -161,6 +162,7 @@ function renderFilaLead(r, prepend = false) {
 
   const nombre = r.nombre || r.Nombre || "—";
   const categoria = r.categoria || r.Categoría || "—";
+  const zonaBusqueda = r.zona_busqueda || r.ZonaBusqueda || "—";
   const telMaps = r.telefono_maps || r["Teléfono Maps"] || "";
   const telWeb = r.telefono_web || r["Teléfono Web"] || "";
   const telefonos = [
@@ -178,6 +180,7 @@ function renderFilaLead(r, prepend = false) {
   tr.dataset.telefono = String(Boolean(telMaps && telMaps !== "—" || telWeb && telWeb !== "—"));
   tr.dataset.correo = String(Boolean(correo && correo !== "—"));
   tr.dataset.whatsapp = String(Boolean(whatsapp && whatsapp !== "—"));
+  tr.dataset.zona = zonaBusqueda;
   tr.dataset.incidencia = String(Boolean(estado.startsWith("Web:") || estado.startsWith("Error")));
 
   // Badges sociales
@@ -216,6 +219,7 @@ function renderFilaLead(r, prepend = false) {
   tr.innerHTML = `
     <td><strong>${escaparHtml(nombre)}</strong></td>
     <td><span class="badge-tag">${escaparHtml(categoria)}</span></td>
+    <td>${escaparHtml(zonaBusqueda)}</td>
     <td>${telefonos}</td>
     <td>${waHtml}</td>
     <td>${correo !== "—" ? `<span class="text-warning" title="Obtenido de la web del negocio">${escaparHtml(correo)}</span>` : '<span class="text-muted">—</span>'}</td>
@@ -252,29 +256,41 @@ async function cargarDatosIniciales() {
       state.leads = resRecords.records;
       resRecords.records.forEach((r) => renderFilaLead(r, false));
     } else {
-      tbodyLeads.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Aún no hay negocios en la base de datos. Inicia una búsqueda arriba.</td></tr>`;
+      tbodyLeads.innerHTML = `<tr><td colspan="9" class="text-center text-muted">Aún no hay negocios en la base de datos. Inicia una búsqueda arriba.</td></tr>`;
     }
+    actualizarFiltroZonas();
     aplicarFiltroTabla();
   } catch (err) {
     agregarLog(`No se pudieron cargar los registros: ${err.message}`, "error");
-    tbodyLeads.innerHTML = `<tr><td colspan="8" class="text-center text-muted">No se pudieron cargar los registros. Revisa el servidor local.</td></tr>`;
+    tbodyLeads.innerHTML = `<tr><td colspan="9" class="text-center text-muted">No se pudieron cargar los registros. Revisa el servidor local.</td></tr>`;
   }
 }
 
 // Filtro en tabla en tiempo real
+function actualizarFiltroZonas() {
+  const seleccionado = filtroZona.value;
+  const zonas = [...new Set([...tbodyLeads.querySelectorAll("tr[data-zona]")].map((tr) => tr.dataset.zona))]
+    .sort((a, b) => a.localeCompare(b, "es"));
+  filtroZona.replaceChildren(new Option("Todos los distritos / ciudades", ""));
+  for (const zona of zonas) filtroZona.add(new Option(zona, zona));
+  filtroZona.value = zonas.includes(seleccionado) ? seleccionado : "";
+}
+
 function aplicarFiltroTabla() {
   const q = filtroTabla.value.toLowerCase();
   const filtro = filtroContacto.value;
+  const zona = filtroZona.value;
   const filas = tbodyLeads.querySelectorAll("tr[data-telefono]");
   let visibles = 0;
   filas.forEach((tr) => {
-    const mostrar = tr.textContent.toLowerCase().includes(q) && (filtro === "todos" || tr.dataset[filtro] === "true");
+    const mostrar = tr.textContent.toLowerCase().includes(q) && (!zona || tr.dataset.zona === zona) && (filtro === "todos" || tr.dataset[filtro] === "true");
     tr.style.display = mostrar ? "" : "none";
     if (mostrar) visibles++;
   });
   contadorFilas.textContent = `${visibles} de ${filas.length} registros visibles · Desliza la tabla para ver todas las columnas.`;
 }
 filtroTabla.addEventListener("input", aplicarFiltroTabla);
+filtroZona.addEventListener("change", aplicarFiltroTabla);
 filtroContacto.addEventListener("change", aplicarFiltroTabla);
 
 function actualizarResumenEjecucion(estadisticas = {}) {
@@ -405,6 +421,7 @@ function conectarEventos() {
       tbodyLeads.innerHTML = "";
     }
     renderFilaLead(lead, true);
+    actualizarFiltroZonas();
     aplicarFiltroTabla();
     actualizarContadoresEnVivo();
   });
@@ -556,7 +573,8 @@ btnLimpiarBd.addEventListener("click", async () => {
     if (!res.ok) throw new Error(data.error || "Error al limpiar base de datos");
 
     agregarLog("Base de datos reiniciada con éxito. Listo para una nueva búsqueda.", "info");
-    tbodyLeads.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Base de datos vacía. Configura tus categorías e inicia la extracción.</td></tr>`;
+    tbodyLeads.innerHTML = `<tr><td colspan="9" class="text-center text-muted">Base de datos vacía. Configura tus categorías e inicia la extracción.</td></tr>`;
+    actualizarFiltroZonas();
     aplicarFiltroTabla();
     actualizarContadoresEnVivo();
     cargarHistorial();

@@ -1,4 +1,4 @@
-# Spider Maps Scraper - Perú · v2.1.0 Turbo 🕷️
+# Spider Maps Scraper - Perú · v2.2.0 Turbo 🕷️
 
 [![English](https://img.shields.io/badge/Language-English-blue.svg)](README_EN.md)
 [![Español](https://img.shields.io/badge/Idioma-Español-brightgreen.svg)](README.md)
@@ -10,6 +10,12 @@
 ---
 
 High-performance tool for collecting and enriching business contact data from Google Maps. Designed for commercial prospecting, B2B marketing, and logistics, equipped with a **real-time interactive Web Control Panel**, modular architecture, and **Turbo engine**.
+
+---
+
+## What's New in Version 2.2.0
+
+- Each listing stores the district or city used to find it. The panel has an area filter and the Excel export has a filterable column. Older listings recover the area when it is explicit in the search term.
 
 ---
 
@@ -41,6 +47,7 @@ District boundaries are from the [Instituto Geográfico Nacional open data porta
 |---|---|---|
 | **Name** | Google Maps | Business trade name sanitized from special characters |
 | **Category** | Search | Category assigned or defined by the user |
+| **District / city** | Search | Area entered for the search; available as a panel and Excel filter, separate from the business address |
 | **Rating** | Google Maps | Average rating score (e.g. 4.8) |
 | **Address** | Google Maps | Physical venue address |
 | **Maps Phone** | Google Maps | Verified phone number normalized for Peru |

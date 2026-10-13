@@ -20,6 +20,7 @@ function inicializarEsquema(db) {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       nombre TEXT DEFAULT '',
       categoria TEXT DEFAULT '',
+      zona_busqueda TEXT DEFAULT '',
       valoracion TEXT DEFAULT '',
       telefono_maps TEXT DEFAULT '',
       telefono_web TEXT DEFAULT '',
@@ -38,12 +39,15 @@ function inicializarEsquema(db) {
     )
   `);
 
-  const columnasFuente = ["fuente_instagram", "fuente_facebook", "fuente_tiktok"];
-  for (const col of columnasFuente) {
-    try {
-      db.exec(`ALTER TABLE negocios ADD COLUMN ${col} TEXT DEFAULT ''`);
-    } catch (_) {}
+  const columnas = new Set(db.pragma("table_info(negocios)").map(({ name }) => name));
+  for (const col of ["fuente_instagram", "fuente_facebook", "fuente_tiktok", "zona_busqueda"]) {
+    if (!columnas.has(col)) db.exec(`ALTER TABLE negocios ADD COLUMN ${col} TEXT DEFAULT ''`);
   }
+  db.exec(`
+    UPDATE negocios SET zona_busqueda = TRIM(SUBSTR(busqueda, LENGTH(categoria) + 2))
+    WHERE zona_busqueda = '' AND categoria != ''
+      AND SUBSTR(busqueda, 1, LENGTH(categoria) + 1) = categoria || ' '
+  `);
 
   db.exec("CREATE INDEX IF NOT EXISTS idx_url_maps ON negocios(url_maps)");
   db.exec("CREATE INDEX IF NOT EXISTS idx_nombre_web ON negocios(nombre, web)");
@@ -120,12 +124,12 @@ function guardarNegocio(datos) {
 
   const insert = db.prepare(`
     INSERT INTO negocios (
-      nombre, categoria, valoracion, telefono_maps, telefono_web,
+      nombre, categoria, zona_busqueda, valoracion, telefono_maps, telefono_web,
       correo, whatsapp, instagram, facebook, tiktok,
       direccion, web, url_maps, busqueda, metodo, estado,
       fuente_instagram, fuente_facebook, fuente_tiktok
     ) VALUES (
-      @nombre, @categoria, @valoracion, @telefono_maps, @telefono_web,
+      @nombre, @categoria, @zona_busqueda, @valoracion, @telefono_maps, @telefono_web,
       @correo, @whatsapp, @instagram, @facebook, @tiktok,
       @direccion, @web, @url_maps, @busqueda, @metodo, @estado,
       @fuente_instagram, @fuente_facebook, @fuente_tiktok
@@ -135,6 +139,7 @@ function guardarNegocio(datos) {
   const info = insert.run({
     nombre: datos.Nombre || datos.nombre || "",
     categoria: datos.Categoría || datos.categoria || "",
+    zona_busqueda: datos.ZonaBusqueda || datos.zona_busqueda || "",
     valoracion: datos.Valoración || datos.valoracion || "",
     telefono_maps: datos["Teléfono Maps"] || datos.telefono_maps || "",
     telefono_web: datos["Teléfono Web"] || datos.telefono_web || "",

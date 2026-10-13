@@ -18,6 +18,7 @@ function crearWorkbook(datos) {
   ws.columns = [
     { header: "Nombre", key: "Nombre", width: 32 },
     { header: "Categoría", key: "Categoría", width: 22 },
+    { header: "Distrito / ciudad", key: "ZonaBusqueda", width: 30 },
     { header: "Valoración", key: "Valoración", width: 12 },
     { header: "Teléfono Maps", key: "Teléfono Maps", width: 20 },
     { header: "Teléfono Web", key: "Teléfono Web", width: 20 },
@@ -63,7 +64,7 @@ function crearWorkbook(datos) {
     row.alignment = { vertical: "middle" };
   });
 
-  ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 16 } };
+  ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: ws.columnCount } };
   ws.views = [{ state: "frozen", ySplit: 1 }];
 
   return wb;
@@ -90,6 +91,7 @@ function prepararExportacion() {
   const exportData = unicos.map((r) => ({
     Nombre: r.nombre || "—",
     Categoría: r.categoria || "—",
+    ZonaBusqueda: r.zona_busqueda || "—",
     Valoración: r.valoracion || "—",
     "Teléfono Maps": r.telefono_maps || "—",
     "Teléfono Web": r.telefono_web || "—",

@@ -1,4 +1,4 @@
-# Spider Maps Scraper - Perú · v2.1.0 Turbo 🕷️
+# Spider Maps Scraper - Perú · v2.2.0 Turbo 🕷️
 
 [![English](https://img.shields.io/badge/Language-English-blue.svg)](README_EN.md)
 [![Español](https://img.shields.io/badge/Idioma-Español-brightgreen.svg)](README.md)
@@ -9,6 +9,12 @@
 > [🇺🇸 Read English Documentation](README_EN.md)
 
 Herramienta de alto rendimiento para recolectar y enriquecer datos de contacto de negocios desde Google Maps. Diseñada para proyectos de prospección comercial, marketing B2B y logística, equipada con un **Panel de Control Web interactivo en tiempo real**, arquitectura modular y **motor Turbo**.
+
+---
+
+## Novedades de la versión 2.2.0
+
+- Cada ficha conserva el distrito o ciudad de la búsqueda que la encontró. El panel permite filtrarlo y el Excel incluye una columna con autofiltro. Las fichas antiguas recuperan esta zona cuando está explícita en el término de búsqueda.
 
 ---
 
@@ -38,6 +44,7 @@ Herramienta de alto rendimiento para recolectar y enriquecer datos de contacto d
 |---|---|---|
 | **Nombre** | Google Maps | Nombre comercial limpio de caracteres especiales |
 | **Categoría** | Búsqueda | Etiqueta introducida por el usuario; no representa necesariamente la categoría real de la ficha en Maps |
+| **Distrito / ciudad** | Búsqueda | Zona ingresada para encontrar la ficha; permite filtrar la tabla del panel y el Excel. No sustituye la dirección del negocio |
 | **Valoración** | Google Maps | Calificación promedio (ej. 4.8) |
 | **Dirección** | Google Maps | Ubicación física del local |
 | **Teléfono Maps** | Google Maps | Teléfono verificado normalizado para Perú |

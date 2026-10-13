@@ -1,6 +1,6 @@
 {
   "name": "spider-maps-scraper",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Extrae negocios de Google Maps y enriquece los datos visitando su web: teléfono, correo, WhatsApp, Instagram, Facebook y TikTok. Exporta a Excel.",
   "main": "scraper.js",
   "scripts": {
@@ -41,5 +41,8 @@
       "better-sqlite3",
       "puppeteer"
     ]
+  },
+  "devDependencies": {
+    "jszip": "^3.10.2"
   }
 }

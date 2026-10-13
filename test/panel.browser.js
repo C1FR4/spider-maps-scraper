@@ -28,6 +28,23 @@ const url = process.env.UI_TEST_URL || "http://127.0.0.1:3001/";
     await page.click("#chipsDistritos .chip-remove");
     assert.equal(await page.$eval("#inputDistrito", (element) => element.placeholder), "Ej. Miraflores");
 
+    const filtroZona = await page.evaluate(() => {
+      tbodyLeads.replaceChildren();
+      renderFilaLead({ Nombre: "Local Norte", Categoría: "farmacia", ZonaBusqueda: "Comas" });
+      renderFilaLead({ Nombre: "Local Sur", Categoría: "farmacia", ZonaBusqueda: "San Borja" });
+      actualizarFiltroZonas();
+      document.getElementById("filtroZona").value = "Comas";
+      aplicarFiltroTabla();
+      return {
+        encabezado: document.querySelector("#tablaLeads thead th:nth-child(3)").textContent,
+        zonas: [...document.querySelectorAll("#filtroZona option")].map((option) => option.value),
+        visibles: [...tbodyLeads.rows].filter((row) => row.style.display !== "none").map((row) => row.cells[0].textContent),
+      };
+    });
+    assert.equal(filtroZona.encabezado, "Distrito / ciudad");
+    assert.deepEqual(filtroZona.zonas, ["", "Comas", "San Borja"]);
+    assert.deepEqual(filtroZona.visibles, ["Local Norte"]);
+
     const estado = await page.evaluate(async () => {
       const response = await fetch("/api/status");
       return response.json();
@@ -52,7 +69,7 @@ const url = process.env.UI_TEST_URL || "http://127.0.0.1:3001/";
     assert.match(descarga.type, /spreadsheetml/);
     assert.ok(descarga.bytes > 1000);
 
-    console.log("Panel comprobado: logo, etiquetas con espacios, ejemplos, estado y descarga Excel.");
+    console.log("Panel comprobado: logo, etiquetas con espacios, filtro de distrito, estado y descarga Excel.");
   } finally {
     await browser.close();
   }
