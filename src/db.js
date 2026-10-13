@@ -1,7 +1,7 @@
 const Database = require("better-sqlite3");
 const path = require("path");
 
-const DB_PATH = path.join(__dirname, "..", "contactos.db");
+const DB_PATH = process.env.SPIDER_DB_PATH || path.join(__dirname, "..", "contactos.db");
 
 let dbInstance = null;
 
@@ -48,6 +48,42 @@ function inicializarEsquema(db) {
   db.exec("CREATE INDEX IF NOT EXISTS idx_url_maps ON negocios(url_maps)");
   db.exec("CREATE INDEX IF NOT EXISTS idx_nombre_web ON negocios(nombre, web)");
   db.exec("CREATE INDEX IF NOT EXISTS idx_nombre_direccion ON negocios(nombre, direccion)");
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS ejecuciones (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      inicio TEXT NOT NULL,
+      fin TEXT,
+      estado TEXT NOT NULL,
+      configuracion TEXT NOT NULL,
+      estadisticas TEXT NOT NULL,
+      fallos TEXT NOT NULL DEFAULT '[]'
+    )
+  `);
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS geografia_pendiente (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nombre TEXT NOT NULL,
+      url_maps TEXT NOT NULL,
+      busqueda TEXT NOT NULL,
+      motivo TEXT NOT NULL,
+      creado_en DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(url_maps, busqueda)
+    )
+  `);
+}
+
+function guardarPendienteGeografico({ nombre, urlMaps, busqueda, motivo }) {
+  getDb().prepare(`
+    INSERT INTO geografia_pendiente (nombre, url_maps, busqueda, motivo)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(url_maps, busqueda) DO UPDATE SET
+      nombre = excluded.nombre,
+      motivo = excluded.motivo
+  `).run(nombre, urlMaps, busqueda, motivo);
+}
+
+function obtenerPendientesGeograficos(limite = 100) {
+  return getDb().prepare("SELECT * FROM geografia_pendiente ORDER BY id DESC LIMIT ?").all(limite);
 }
 
 function checkpointWAL() {
@@ -153,6 +189,7 @@ function obtenerEstadisticas() {
   const conCorreo = db.prepare("SELECT COUNT(*) as count FROM negocios WHERE correo != '' AND correo != '—'").get().count;
   const conWhatsapp = db.prepare("SELECT COUNT(*) as count FROM negocios WHERE whatsapp != '' AND whatsapp != '—'").get().count;
   const conWeb = db.prepare("SELECT COUNT(*) as count FROM negocios WHERE web != '' AND web != '—'").get().count;
+  const pendientesGeograficos = db.prepare("SELECT COUNT(*) as count FROM geografia_pendiente").get().count;
 
   return {
     total,
@@ -161,12 +198,13 @@ function obtenerEstadisticas() {
     conCorreo,
     conWhatsapp,
     conWeb,
+    pendientesGeograficos,
   };
 }
 
 function vaciarBaseDeDatos() {
   const db = getDb();
-  db.exec("DELETE FROM negocios; DELETE FROM sqlite_sequence WHERE name = 'negocios';");
+  db.exec("DELETE FROM negocios; DELETE FROM ejecuciones; DELETE FROM geografia_pendiente; DELETE FROM sqlite_sequence WHERE name IN ('negocios', 'ejecuciones', 'geografia_pendiente');");
   checkpointWAL();
   return true;
 }
@@ -185,6 +223,8 @@ module.exports = {
   getDb,
   DB_PATH,
   guardarNegocio,
+  guardarPendienteGeografico,
+  obtenerPendientesGeograficos,
   existeDuplicado,
   contarNegocios,
   obtenerTodos,

@@ -1,7 +1,7 @@
 // ─── ESTADO GLOBAL DE LA APP ──────────────────────────────────────
 const state = {
-  categorias: ["veterinaria"],
-  distritos: ["Miraflores"],
+  categorias: [],
+  distritos: [],
   isScraping: false,
   leads: [],
 };
@@ -21,10 +21,17 @@ const btnApagarServidor = document.getElementById("btnApagarServidor");
 const progressBar = document.getElementById("progressBar");
 const progressText = document.getElementById("progressText");
 const progressPercent = document.getElementById("progressPercent");
+const resumenEjecucion = document.getElementById("resumenEjecucion");
+const historialEjecuciones = document.getElementById("historialEjecuciones");
 const consoleLogs = document.getElementById("consoleLogs");
 const btnLimpiarLogs = document.getElementById("btnLimpiarLogs");
 const tbodyLeads = document.getElementById("tbodyLeads");
 const filtroTabla = document.getElementById("filtroTabla");
+const filtroContacto = document.getElementById("filtroContacto");
+const contadorFilas = document.getElementById("contadorFilas");
+const resumenBusqueda = document.getElementById("resumenBusqueda");
+const contadorCategorias = document.getElementById("contadorCategorias");
+const contadorDistritos = document.getElementById("contadorDistritos");
 
 const statTotal = document.getElementById("statTotal");
 const statTelefonos = document.getElementById("statTelefonos");
@@ -33,47 +40,85 @@ const statCorreos = document.getElementById("statCorreos");
 
 // ─── MANEJO DE CHIPS (CATEGORÍAS Y DISTRITOS) ───────────────────────
 
+function escaparHtml(valor) {
+  return String(valor ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+}
+
+function urlSegura(valor) {
+  try {
+    const url = new URL(String(valor));
+    return ["http:", "https:"].includes(url.protocol) ? url.href : "";
+  } catch (_) {
+    return "";
+  }
+}
+
+function actualizarResumenBusqueda() {
+  contadorCategorias.textContent = state.categorias.length;
+  contadorDistritos.textContent = state.distritos.length;
+  const total = state.categorias.length * state.distritos.length;
+  if (!total) {
+    resumenBusqueda.textContent = "Agrega categorías y distritos para preparar las combinaciones.";
+    return;
+  }
+  const ejemplos = state.categorias.flatMap((cat) => state.distritos.map((dist) => `${cat} en ${dist}`));
+  resumenBusqueda.textContent = `${total} ${total === 1 ? "búsqueda" : "búsquedas"}: ${ejemplos.slice(0, 3).join(" · ")}${total > 3 ? ` · y ${total - 3} más` : ""}`;
+}
+
 function renderChips(tipo) {
   const lista = tipo === "cat" ? state.categorias : state.distritos;
   const contenedor = tipo === "cat" ? chipsCategorias : chipsDistritos;
+  const input = tipo === "cat" ? inputCategoria : inputDistrito;
 
   contenedor.innerHTML = "";
   lista.forEach((item, index) => {
     const chip = document.createElement("span");
     chip.className = "chip";
-    chip.innerHTML = `
-      ${item}
-      <span class="chip-remove" data-tipo="${tipo}" data-index="${index}">×</span>
-    `;
+    chip.appendChild(document.createTextNode(item));
+    const quitar = document.createElement("button");
+    quitar.type = "button";
+    quitar.className = "chip-remove";
+    quitar.dataset.tipo = tipo;
+    quitar.dataset.index = String(index);
+    quitar.setAttribute("aria-label", `Quitar ${item}`);
+    quitar.textContent = "×";
+    chip.appendChild(quitar);
     contenedor.appendChild(chip);
   });
+  input.placeholder = lista.length ? "" : input.dataset.placeholder;
+  actualizarResumenBusqueda();
 }
 
 function agregarChip(tipo, valor) {
-  const v = valor.trim().toLowerCase();
+  const limpio = valor.trim().replace(/^['"]|['"]$/g, "").replace(/\s+/g, " ");
+  const v = limpio.toLocaleLowerCase("es");
   if (!v) return;
   const lista = tipo === "cat" ? state.categorias : state.distritos;
-  if (!lista.map((x) => x.toLowerCase()).includes(v)) {
-    lista.push(valor.trim());
+  if (!lista.some((x) => x.toLocaleLowerCase("es") === v)) {
+    lista.push(limpio);
     renderChips(tipo);
   }
 }
 
-inputCategoria.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" || e.key === ",") {
-    e.preventDefault();
-    agregarChip("cat", inputCategoria.value);
-    inputCategoria.value = "";
-  }
-});
+function configurarEntrada(input, tipo) {
+  input.dataset.placeholder = input.placeholder;
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      agregarChip(tipo, input.value);
+      input.value = "";
+    }
+  });
+  input.addEventListener("input", () => {
+    if (!input.value.includes(",")) return;
+    const partes = input.value.split(",");
+    partes.slice(0, -1).forEach((parte) => agregarChip(tipo, parte));
+    input.value = partes.at(-1);
+  });
+}
 
-inputDistrito.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" || e.key === ",") {
-    e.preventDefault();
-    agregarChip("dist", inputDistrito.value);
-    inputDistrito.value = "";
-  }
-});
+configurarEntrada(inputCategoria, "cat");
+configurarEntrada(inputDistrito, "dist");
 
 document.addEventListener("click", (e) => {
   if (e.target.classList.contains("chip-remove")) {
@@ -118,7 +163,10 @@ function renderFilaLead(r, prepend = false) {
   const categoria = r.categoria || r.Categoría || "—";
   const telMaps = r.telefono_maps || r["Teléfono Maps"] || "";
   const telWeb = r.telefono_web || r["Teléfono Web"] || "";
-  const telefonos = [telMaps, telWeb].filter((x) => x && x !== "—").join(" | ") || "—";
+  const telefonos = [
+    telMaps && telMaps !== "—" ? `<span title="Obtenido de Google Maps"><small>Maps</small> ${escaparHtml(telMaps)}</span>` : "",
+    telWeb && telWeb !== "—" ? `<span title="Obtenido de la web del negocio"><small>Web</small> ${escaparHtml(telWeb)}</span>` : "",
+  ].filter(Boolean).join("<br>") || "—";
   const whatsapp = r.whatsapp || r.WhatsApp || "—";
   const correo = r.correo || r.Correo || "—";
   const ig = r.instagram || r.Instagram || "";
@@ -127,12 +175,16 @@ function renderFilaLead(r, prepend = false) {
   const web = r.web || r.Web || "";
   const urlMaps = r.url_maps || r.URLMaps || "";
   const estado = r.estado || r.Estado || "OK";
+  tr.dataset.telefono = String(Boolean(telMaps && telMaps !== "—" || telWeb && telWeb !== "—"));
+  tr.dataset.correo = String(Boolean(correo && correo !== "—"));
+  tr.dataset.whatsapp = String(Boolean(whatsapp && whatsapp !== "—"));
+  tr.dataset.incidencia = String(Boolean(estado.startsWith("Web:") || estado.startsWith("Error")));
 
   // Badges sociales
   let redesHtml = "";
-  if (ig && ig !== "—") redesHtml += `<a href="https://${ig}" target="_blank" class="social-pill">IG</a> `;
-  if (fb && fb !== "—") redesHtml += `<a href="https://${fb}" target="_blank" class="social-pill">FB</a> `;
-  if (tt && tt !== "—") redesHtml += `<a href="https://${tt}" target="_blank" class="social-pill">TT</a> `;
+  if (ig && ig !== "—" && urlSegura(`https://${ig}`)) redesHtml += `<a href="${escaparHtml(urlSegura(`https://${ig}`))}" target="_blank" rel="noopener noreferrer" class="social-pill">IG</a> `;
+  if (fb && fb !== "—" && urlSegura(`https://${fb}`)) redesHtml += `<a href="${escaparHtml(urlSegura(`https://${fb}`))}" target="_blank" rel="noopener noreferrer" class="social-pill">FB</a> `;
+  if (tt && tt !== "—" && urlSegura(`https://${tt}`)) redesHtml += `<a href="${escaparHtml(urlSegura(`https://${tt}`))}" target="_blank" rel="noopener noreferrer" class="social-pill">TT</a> `;
   if (!redesHtml) redesHtml = '<span class="text-muted">—</span>';
 
   // WhatsApp clickeable
@@ -140,16 +192,19 @@ function renderFilaLead(r, prepend = false) {
   if (whatsapp && whatsapp !== "—") {
     const waFirst = whatsapp.split(" | ")[0];
     const waHref = waFirst.startsWith("http") ? waFirst : `https://${waFirst}`;
-    waHtml = `<a href="${waHref}" target="_blank" class="link-out">💬 ${whatsapp.split(" | ")[0]}</a>`;
+    const destino = urlSegura(waHref);
+    if (destino) waHtml = `<a href="${escaparHtml(destino)}" target="_blank" rel="noopener noreferrer" class="link-out">💬 ${escaparHtml(waFirst)}</a>`;
   }
 
   // Links Web / Maps
   let linksHtml = "";
   if (web && web !== "—") {
-    linksHtml += `<a href="${web}" target="_blank" class="link-out" title="${web}">🌐 Web</a> `;
+    const destino = urlSegura(web);
+    if (destino) linksHtml += `<a href="${escaparHtml(destino)}" target="_blank" rel="noopener noreferrer" class="link-out" title="${escaparHtml(web)}">🌐 Web</a> `;
   }
   if (urlMaps && urlMaps !== "—") {
-    linksHtml += `<a href="${urlMaps}" target="_blank" class="link-out" title="Ver en Maps">📍 Maps</a>`;
+    const destino = urlSegura(urlMaps);
+    if (destino) linksHtml += `<a href="${escaparHtml(destino)}" target="_blank" rel="noopener noreferrer" class="link-out" title="Ver en Maps">📍 Maps</a>`;
   }
   if (!linksHtml) linksHtml = "—";
 
@@ -159,14 +214,14 @@ function renderFilaLead(r, prepend = false) {
   else if (estado !== "OK") badgeClass = "badge-error";
 
   tr.innerHTML = `
-    <td><strong>${nombre}</strong></td>
-    <td><span class="badge-tag">${categoria}</span></td>
+    <td><strong>${escaparHtml(nombre)}</strong></td>
+    <td><span class="badge-tag">${escaparHtml(categoria)}</span></td>
     <td>${telefonos}</td>
     <td>${waHtml}</td>
-    <td>${correo !== "—" ? `<span class="text-warning">${correo}</span>` : '<span class="text-muted">—</span>'}</td>
+    <td>${correo !== "—" ? `<span class="text-warning" title="Obtenido de la web del negocio">${escaparHtml(correo)}</span>` : '<span class="text-muted">—</span>'}</td>
     <td><div class="social-icons">${redesHtml}</div></td>
     <td>${linksHtml}</td>
-    <td><span class="badge-tag ${badgeClass}">${estado}</span></td>
+    <td><span class="badge-tag ${badgeClass}">${escaparHtml(estado)}</span></td>
   `;
 
   if (prepend && tbodyLeads.firstChild) {
@@ -178,10 +233,12 @@ function renderFilaLead(r, prepend = false) {
 
 async function cargarDatosIniciales() {
   try {
-    const [resStats, resRecords] = await Promise.all([
-      fetch("/api/stats").then((r) => r.json()),
-      fetch("/api/records?limit=60").then((r) => r.json()),
+    const [statsResponse, recordsResponse] = await Promise.all([
+      fetch("/api/stats"),
+      fetch("/api/records?limit=60"),
     ]);
+    if (!statsResponse.ok || !recordsResponse.ok) throw new Error("El servidor no respondió correctamente.");
+    const [resStats, resRecords] = await Promise.all([statsResponse.json(), recordsResponse.json()]);
 
     // Estadísticas
     statTotal.textContent = resStats.total || 0;
@@ -197,34 +254,132 @@ async function cargarDatosIniciales() {
     } else {
       tbodyLeads.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Aún no hay negocios en la base de datos. Inicia una búsqueda arriba.</td></tr>`;
     }
+    aplicarFiltroTabla();
   } catch (err) {
-    console.error("Error cargando datos iniciales:", err);
+    agregarLog(`No se pudieron cargar los registros: ${err.message}`, "error");
+    tbodyLeads.innerHTML = `<tr><td colspan="8" class="text-center text-muted">No se pudieron cargar los registros. Revisa el servidor local.</td></tr>`;
   }
 }
 
 // Filtro en tabla en tiempo real
-filtroTabla.addEventListener("input", () => {
+function aplicarFiltroTabla() {
   const q = filtroTabla.value.toLowerCase();
-  const filas = tbodyLeads.querySelectorAll("tr");
+  const filtro = filtroContacto.value;
+  const filas = tbodyLeads.querySelectorAll("tr[data-telefono]");
+  let visibles = 0;
   filas.forEach((tr) => {
-    tr.style.display = tr.textContent.toLowerCase().includes(q) ? "" : "none";
+    const mostrar = tr.textContent.toLowerCase().includes(q) && (filtro === "todos" || tr.dataset[filtro] === "true");
+    tr.style.display = mostrar ? "" : "none";
+    if (mostrar) visibles++;
   });
+  contadorFilas.textContent = `${visibles} de ${filas.length} registros visibles · Desliza la tabla para ver todas las columnas.`;
+}
+filtroTabla.addEventListener("input", aplicarFiltroTabla);
+filtroContacto.addEventListener("change", aplicarFiltroTabla);
+
+function actualizarResumenEjecucion(estadisticas = {}) {
+  const completadas = estadisticas.busquedasCompletadas || 0;
+  const total = estadisticas.busquedasTotales || 0;
+  resumenEjecucion.textContent = `${completadas}/${total} búsquedas revisadas · ${estadisticas.negociosEncontrados || 0} fichas en zona · ${estadisticas.negociosGuardados || 0} nuevos · ${estadisticas.duplicados || 0} duplicados · ${estadisticas.fueraPeru || 0} fuera de Perú · ${estadisticas.fueraZona || 0} fuera de zona · ${estadisticas.sinCoordenadas || 0} por verificar · ${estadisticas.errores || 0} incidencias`;
+}
+
+async function cargarHistorial() {
+  try {
+    const response = await fetch("/api/runs");
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const { runs } = await response.json();
+    historialEjecuciones.replaceChildren();
+    if (!runs.length) {
+      historialEjecuciones.textContent = "Todavía no hay ejecuciones guardadas.";
+      return;
+    }
+    const nombres = { running: "En curso", completed: "Completada", partial: "Con incidencias", stopped: "Detenida", error: "Error", interrupted: "Interrumpida" };
+    for (const run of runs) {
+      const item = document.createElement("div");
+      item.className = "run-item";
+      const detalle = document.createElement("div");
+      const fecha = new Date(run.inicio).toLocaleString("es-PE");
+      const total = run.estadisticas.busquedasTotales || 0;
+      detalle.innerHTML = `<strong>#${run.id} · ${escaparHtml(nombres[run.estado] || run.estado)} · ${escaparHtml(fecha)}</strong>${run.estadisticas.busquedasCompletadas || 0}/${total} búsquedas · ${run.estadisticas.negociosGuardados || 0} nuevos · ${run.fallos.length} por reintentar`;
+      item.appendChild(detalle);
+      if (run.fallos.length) {
+        const boton = document.createElement("button");
+        boton.type = "button";
+        boton.className = "btn btn-secondary btn-sm";
+        boton.dataset.retry = String(run.id);
+        boton.textContent = "Reintentar";
+        boton.disabled = state.isScraping;
+        item.appendChild(boton);
+      }
+      historialEjecuciones.appendChild(item);
+    }
+  } catch (err) {
+    historialEjecuciones.textContent = `No se pudo cargar el historial: ${err.message}`;
+  }
+}
+
+historialEjecuciones.addEventListener("click", async (event) => {
+  const boton = event.target.closest("button[data-retry]");
+  if (!boton || state.isScraping) return;
+  boton.disabled = true;
+  try {
+    const response = await fetch(`/api/scrape/retry/${boton.dataset.retry}`, { method: "POST" });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+    agregarLog(data.mensaje, "info");
+    setUiCorriendo(true);
+    await cargarHistorial();
+  } catch (err) {
+    agregarLog(`No se pudo reintentar: ${err.message}`, "error");
+    boton.disabled = false;
+  }
 });
+
+function aplicarEstado(data) {
+  setUiCorriendo(data.estado === "running");
+  progressText.textContent = data.mensaje || "En espera";
+  if (data.progreso) {
+    progressBar.style.width = `${data.progreso.porcentaje}%`;
+    progressPercent.textContent = `${data.progreso.porcentaje}%`;
+  } else if (data.estado === "running") {
+    progressBar.style.width = "0%";
+    progressPercent.textContent = "0%";
+  }
+  if (data.estadisticas) {
+    state.runStats = data.estadisticas;
+    actualizarResumenEjecucion(data.estadisticas);
+  }
+}
 
 // ─── SERVER-SENT EVENTS (SSE) PARA PROGRESO EN VIVO ─────────────────
 
 function conectarEventos() {
   const sse = new EventSource("/api/scrape/events");
+  let conexionPerdida = false;
+
+  sse.addEventListener("open", async () => {
+    if (conexionPerdida) agregarLog("Conexión recuperada. Actualizando resultados y progreso...", "success");
+    conexionPerdida = false;
+    try {
+      const response = await fetch("/api/status");
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      aplicarEstado(await response.json());
+      await cargarDatosIniciales();
+      await cargarHistorial();
+    } catch (err) {
+      agregarLog(`No se pudo recuperar el estado del servidor: ${err.message}`, "warn");
+    }
+  });
+
+  sse.addEventListener("error", () => {
+    if (!conexionPerdida) agregarLog("Se perdió la conexión de eventos. Intentando reconectar...", "warn");
+    conexionPerdida = true;
+  });
 
   sse.addEventListener("status", (e) => {
     const data = JSON.parse(e.data);
-    if (data.estado === "running") {
-      setUiCorriendo(true);
-      progressText.textContent = data.mensaje || "Ejecutando...";
-    } else if (data.estado === "completed" || data.estado === "idle") {
-      setUiCorriendo(false);
-      progressText.textContent = data.mensaje || "Completado";
-    }
+    aplicarEstado(data);
+    if (data.estado === "error") agregarLog(data.mensaje, "error");
   });
 
   sse.addEventListener("progress", (e) => {
@@ -232,6 +387,10 @@ function conectarEventos() {
     progressBar.style.width = `${data.porcentaje}%`;
     progressPercent.textContent = `${data.porcentaje}%`;
     progressText.textContent = `[${data.indiceTermino}/${data.totalTerminos}] "${data.terminoActual}"`;
+    if (data.estadisticas) {
+      state.runStats = data.estadisticas;
+      actualizarResumenEjecucion(data.estadisticas);
+    }
   });
 
   sse.addEventListener("log", (e) => {
@@ -246,21 +405,21 @@ function conectarEventos() {
       tbodyLeads.innerHTML = "";
     }
     renderFilaLead(lead, true);
+    aplicarFiltroTabla();
     actualizarContadoresEnVivo();
   });
 
   sse.addEventListener("done", (e) => {
     const data = JSON.parse(e.data);
-    progressBar.style.width = "100%";
-    progressPercent.textContent = "100%";
-    agregarLog(`🎉 Extracción finalizada con éxito en ${data.duracionSegundos}s.`, "success");
+    const errores = data.estadisticas?.errores || 0;
+    actualizarResumenEjecucion(data.estadisticas);
+    agregarLog(`Extracción ${data.estado === "stopped" ? "detenida" : "finalizada"} en ${data.duracionSegundos}s. ${errores} incidencia${errores === 1 ? "" : "s"}.`, errores ? "warn" : "success");
     setUiCorriendo(false);
     cargarDatosIniciales();
+    cargarHistorial();
   });
 
-  sse.onerror = () => {
-    setTimeout(conectarEventos, 5000);
-  };
+  // EventSource vuelve a conectarse por sí mismo.
 }
 
 function actualizarContadoresEnVivo() {
@@ -279,6 +438,7 @@ function setUiCorriendo(corriendo) {
   state.isScraping = corriendo;
   btnIniciar.disabled = corriendo;
   btnDetener.disabled = !corriendo;
+  historialEjecuciones.querySelectorAll("button[data-retry]").forEach((boton) => { boton.disabled = corriendo; });
   if (corriendo) {
     btnIniciar.textContent = "⏳ Extrayendo...";
   } else {
@@ -289,12 +449,20 @@ function setUiCorriendo(corriendo) {
 // ─── ACCIONES DE CONTROL ───────────────────────────────────────────
 
 btnIniciar.addEventListener("click", async () => {
+  agregarChip("cat", inputCategoria.value);
+  agregarChip("dist", inputDistrito.value);
+  inputCategoria.value = "";
+  inputDistrito.value = "";
   if (state.categorias.length === 0) {
     alert("Por favor ingresa al menos una categoría.");
     return;
   }
   if (state.distritos.length === 0) {
     alert("Por favor ingresa al menos un distrito.");
+    return;
+  }
+  if (state.categorias.length * state.distritos.length > 100) {
+    alert("Máximo 100 combinaciones por ejecución. Quita algunas categorías o distritos.");
     return;
   }
 
@@ -323,6 +491,7 @@ btnIniciar.addEventListener("click", async () => {
       throw new Error(data.error || "No se pudo iniciar");
     }
   } catch (err) {
+    agregarLog(`No se pudo iniciar la extracción: ${err.message}`, "error");
     alert(`Error: ${err.message}`);
     setUiCorriendo(false);
   }
@@ -333,14 +502,41 @@ btnDetener.addEventListener("click", async () => {
   try {
     btnDetener.disabled = true;
     agregarLog("Solicitando detención...", "warn");
-    await fetch("/api/scrape/stop", { method: "POST" });
+    const response = await fetch("/api/scrape/stop", { method: "POST" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
   } catch (err) {
-    console.error(err);
+    agregarLog(`No se pudo solicitar la detención: ${err.message}`, "error");
+    btnDetener.disabled = false;
   }
 });
 
-btnDescargarExcel.addEventListener("click", () => {
-  window.location.href = "/api/download/excel";
+btnDescargarExcel.addEventListener("click", async () => {
+  btnDescargarExcel.disabled = true;
+  const textoOriginal = btnDescargarExcel.textContent;
+  btnDescargarExcel.textContent = "Preparando Excel...";
+  try {
+    const res = await fetch("/api/download/excel");
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error || `Error HTTP ${res.status}`);
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "contactos_spider.xlsx";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    agregarLog(`Excel descargado: ${res.headers.get("X-Record-Count") || 0} registros.`, "success");
+  } catch (err) {
+    agregarLog(`No se pudo descargar el Excel: ${err.message}`, "error");
+    alert(`No se pudo descargar el Excel: ${err.message}`);
+  } finally {
+    btnDescargarExcel.disabled = false;
+    btnDescargarExcel.textContent = textoOriginal;
+  }
 });
 
 // Limpiar base de datos / Iniciar sesión nueva
@@ -361,7 +557,9 @@ btnLimpiarBd.addEventListener("click", async () => {
 
     agregarLog("Base de datos reiniciada con éxito. Listo para una nueva búsqueda.", "info");
     tbodyLeads.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Base de datos vacía. Configura tus categorías e inicia la extracción.</td></tr>`;
+    aplicarFiltroTabla();
     actualizarContadoresEnVivo();
+    cargarHistorial();
   } catch (err) {
     alert(`Error: ${err.message}`);
   }
@@ -391,4 +589,5 @@ btnApagarServidor.addEventListener("click", async () => {
 renderChips("cat");
 renderChips("dist");
 cargarDatosIniciales();
+cargarHistorial();
 conectarEventos();

@@ -1,16 +1,19 @@
 const express = require("express");
 const path = require("path");
-const fs = require("fs");
 const { exec } = require("child_process");
 const { engine } = require("./scraperEngine");
-const { obtenerRecientes, obtenerEstadisticas, contarNegocios, vaciarBaseDeDatos } = require("./db");
-const { exportarExcelDesdeDb } = require("./excel");
+const { obtenerRecientes, obtenerEstadisticas, obtenerPendientesGeograficos, contarNegocios, vaciarBaseDeDatos } = require("./db");
+const { exportarExcelBufferDesdeDb } = require("./excel");
 const { mostrarBanner } = require("../banner");
+const { obtenerEjecuciones, obtenerEjecucion, recuperarInterrumpidas } = require("./runs");
+const { validarSolicitudInicio } = require("./validation");
+
+recuperarInterrumpidas();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json());
+app.use(express.json({ limit: "32kb" }));
 app.use(express.static(path.join(__dirname, "..", "public")));
 
 // Clientes SSE conectados
@@ -44,13 +47,8 @@ app.get("/api/scrape/events", (req, res) => {
 
   clientesSse.add(res);
 
-  // Enviar estado inicial
-  res.write(
-    `event: status\ndata: ${JSON.stringify({
-      estado: engine.activo ? "running" : "idle",
-      mensaje: engine.activo ? "Extrayendo datos en segundo plano..." : "Listo para iniciar",
-    })}\n\n`
-  );
+  // Enviar el último estado completo tras abrir o reconectar el panel.
+  res.write(`event: status\ndata: ${JSON.stringify(engine.obtenerEstado())}\n\n`);
 
   req.on("close", () => {
     clientesSse.delete(res);
@@ -59,14 +57,13 @@ app.get("/api/scrape/events", (req, res) => {
 
 app.get("/api/status", (req, res) => {
   res.json({
-    activo: engine.activo,
-    estadisticas: engine.estadisticas,
+    ...engine.obtenerEstado(),
     totalBd: contarNegocios(),
   });
 });
 
 app.get("/api/records", (req, res) => {
-  const limite = parseInt(req.query.limit, 10) || 50;
+  const limite = Math.min(500, Math.max(1, parseInt(req.query.limit, 10) || 50));
   const records = obtenerRecientes(limite);
   res.json({ records });
 });
@@ -76,27 +73,28 @@ app.get("/api/stats", (req, res) => {
   res.json(stats);
 });
 
+app.get("/api/geography/pending", (req, res) => {
+  res.json({ records: obtenerPendientesGeograficos(100) });
+});
+
+app.get("/api/runs", (req, res) => {
+  res.json({ runs: obtenerEjecuciones(10) });
+});
+
 app.post("/api/scrape/start", async (req, res) => {
   if (engine.activo) {
     return res.status(400).json({ error: "Ya hay una tarea en ejecución." });
   }
 
-  const {
-    categorias = [],
-    distritos = [],
-    maxResultados = 30,
-    modo = "turbo",
-  } = req.body;
-
-  if (!categorias.length || !distritos.length) {
-    return res.status(400).json({ error: "Debes ingresar al menos una categoría y un distrito." });
-  }
+  const resultado = validarSolicitudInicio(req.body);
+  if (resultado.error) return res.status(400).json({ error: resultado.error });
+  const { categorias, distritos, maxResultados, modo } = resultado.configuracion;
 
   // Iniciar en segundo plano
   engine.ejecutar({
     categorias,
     distritos,
-    maxResultados: Number(maxResultados) || 30,
+    maxResultados,
     modo,
   }).catch((err) => {
     console.error("Error en ejecución del scraper:", err);
@@ -119,16 +117,34 @@ app.post("/api/scrape/stop", (req, res) => {
   res.json({ ok: true, mensaje: "Detención solicitada." });
 });
 
+app.post("/api/scrape/retry/:id", (req, res) => {
+  if (engine.activo) return res.status(409).json({ error: "Ya hay una extracción en curso." });
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id < 1) return res.status(400).json({ error: "ID de ejecución inválido." });
+  const run = obtenerEjecucion(id);
+  if (!run) return res.status(404).json({ error: "No se encontró la ejecución." });
+  if (!run.fallos.length) return res.status(400).json({ error: "Esta ejecución no tiene búsquedas fallidas para reintentar." });
+
+  const terminos = [...new Map(run.fallos.map(({ categoria, distrito }) =>
+    [`${categoria.toLocaleLowerCase("es")}|${distrito.toLocaleLowerCase("es")}`, { categoria, distrito }]
+  )).values()];
+  engine.ejecutar({ ...run.configuracion, terminos }).catch((err) => {
+    console.error("Error al reintentar la extracción:", err);
+  });
+  res.json({ ok: true, mensaje: `Reintentando ${terminos.length} búsqueda(s).` });
+});
+
 app.get("/api/download/excel", async (req, res) => {
   try {
-    const { ruta } = await exportarExcelDesdeDb();
-    if (fs.existsSync(ruta)) {
-      res.download(ruta, "contactos_spider.xlsx");
-    } else {
-      res.status(404).json({ error: "No se encontró el archivo Excel." });
-    }
+    const { buffer, total } = await exportarExcelBufferDesdeDb();
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", 'attachment; filename="contactos_spider.xlsx"');
+    res.setHeader("Content-Length", buffer.length);
+    res.setHeader("X-Record-Count", String(total));
+    res.send(buffer);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Error al exportar Excel:", err);
+    res.status(500).json({ error: "No se pudo generar el Excel. Revisa el registro del servidor." });
   }
 });
 
@@ -152,6 +168,14 @@ app.post("/api/system/shutdown", (req, res) => {
   }, 600);
 });
 
+app.use("/api", (err, req, res, next) => {
+  if (res.headersSent) return next(err);
+  if (err.type === "entity.parse.failed") return res.status(400).json({ error: "El JSON enviado no es válido." });
+  if (err.type === "entity.too.large") return res.status(413).json({ error: "La solicitud supera el tamaño permitido." });
+  console.error(`Error en ${req.method} ${req.path}:`, err);
+  res.status(500).json({ error: "Error interno del servidor. Revisa la terminal para más detalles." });
+});
+
 // ─── INICIAR SERVIDOR ──────────────────────────────────────────────
 
 function abrirNavegador(url) {
@@ -164,7 +188,7 @@ function abrirNavegador(url) {
   exec(`${start} ${url}`);
 }
 
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, "127.0.0.1", () => {
   mostrarBanner();
   const url = `http://localhost:${PORT}`;
   console.log(`\n  Panel Web activo en: \x1b[36m${url}\x1b[0m`);

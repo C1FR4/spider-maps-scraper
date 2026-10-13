@@ -1,7 +1,7 @@
 const ExcelJS = require("exceljs");
 const path = require("path");
 const fs = require("fs");
-const { obtenerTodos, checkpointWAL } = require("./db");
+const { obtenerTodos } = require("./db");
 
 const CONFIG_PATH = path.join(__dirname, "..", "config.json");
 let CONFIG = { archivoExcel: "contactos.xlsx" };
@@ -11,8 +11,7 @@ if (fs.existsSync(CONFIG_PATH)) {
   } catch (_) {}
 }
 
-async function guardarExcel(datos, ruta = null) {
-  const rutaDestino = ruta || path.join(__dirname, "..", CONFIG.archivoExcel || "contactos.xlsx");
+function crearWorkbook(datos) {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("Contactos");
 
@@ -67,12 +66,16 @@ async function guardarExcel(datos, ruta = null) {
   ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 16 } };
   ws.views = [{ state: "frozen", ySplit: 1 }];
 
-  await wb.xlsx.writeFile(rutaDestino);
+  return wb;
+}
+
+async function guardarExcel(datos, ruta = null) {
+  const rutaDestino = ruta || process.env.SPIDER_EXCEL_PATH || path.join(__dirname, "..", CONFIG.archivoExcel || "contactos.xlsx");
+  await crearWorkbook(datos).xlsx.writeFile(rutaDestino);
   return rutaDestino;
 }
 
-async function exportarExcelDesdeDb(rutaPersonalizada = null) {
-  checkpointWAL();
+function prepararExportacion() {
   const todos = obtenerTodos();
 
   const vistosUrlMaps = new Set();
@@ -103,15 +106,27 @@ async function exportarExcelDesdeDb(rutaPersonalizada = null) {
     Estado: r.estado || "—",
   }));
 
+  return { exportData, total: unicos.length, omitidos: todos.length - unicos.length };
+}
+
+async function exportarExcelDesdeDb(rutaPersonalizada = null) {
+  const { exportData, total, omitidos } = prepararExportacion();
   const rutaFinal = await guardarExcel(exportData, rutaPersonalizada);
   return {
     ruta: rutaFinal,
-    total: unicos.length,
-    omitidos: todos.length - unicos.length,
+    total,
+    omitidos,
   };
+}
+
+async function exportarExcelBufferDesdeDb() {
+  const { exportData, total } = prepararExportacion();
+  const buffer = await crearWorkbook(exportData).xlsx.writeBuffer();
+  return { buffer, total };
 }
 
 module.exports = {
   guardarExcel,
   exportarExcelDesdeDb,
+  exportarExcelBufferDesdeDb,
 };

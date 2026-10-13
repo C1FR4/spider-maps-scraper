@@ -1,12 +1,15 @@
 {
   "name": "spider-maps-scraper",
-  "version": "1.0.0",
+  "version": "2.1.0",
   "description": "Extrae negocios de Google Maps y enriquece los datos visitando su web: teléfono, correo, WhatsApp, Instagram, Facebook y TikTok. Exporta a Excel.",
   "main": "scraper.js",
   "scripts": {
     "start": "node src/server.js",
     "cli": "node scraper.js",
-    "test": "node --test"
+    "doctor": "node scripts/doctor.js",
+    "test": "node --test test/*.test.js",
+    "test:ui": "node test/panel.browser.js",
+    "test:live": "node test/prueba_funcional.js"
   },
   "keywords": [
     "google-maps",
@@ -18,11 +21,12 @@
     "contact-extractor"
   ],
   "engines": {
-    "node": ">=18"
+    "node": ">=22.12.0"
   },
   "author": "C1FR4",
   "license": "MIT",
   "dependencies": {
+    "@turf/boolean-point-in-polygon": "^7.2.0",
     "better-sqlite3": "^11.7.0",
     "cheerio": "^1.2.0",
     "exceljs": "^4.4.0",

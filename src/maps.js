@@ -97,7 +97,7 @@ async function crearPool(browser, n = 3) {
   return { obtener, liberar, destruir };
 }
 
-async function extraerFichaNegocio(pagina, enlace) {
+async function extraerFichaNegocio(pagina, enlace, onLog = null) {
   try {
     await pagina.goto(enlace, { waitUntil: "domcontentloaded", timeout: 16000 });
     await descartarBannerCookies(pagina);
@@ -156,6 +156,7 @@ async function extraerFichaNegocio(pagina, enlace) {
     }
     return null;
   } catch (err) {
+    if (onLog) onLog(`No se pudo leer una ficha de Maps (${new URL(enlace).pathname}): ${err.message}`);
     return null;
   }
 }
@@ -163,7 +164,7 @@ async function extraerFichaNegocio(pagina, enlace) {
 /**
  * Busca negocios en Google Maps y recolecta las URLs de sus fichas
  */
-async function buscarEnlacesEnMaps(termino, browser, maxResultados = 30, onLog = null) {
+async function buscarEnlacesEnMaps(termino, browser, maxResultados = 30, onLog = null, aceptarEnlace = () => true) {
   const log = (msg) => onLog && onLog(msg);
   const page = await browser.newPage();
   await configurarPagina(page);
@@ -178,15 +179,22 @@ async function buscarEnlacesEnMaps(termino, browser, maxResultados = 30, onLog =
     const currentUrl = page.url();
     if (currentUrl.includes("/maps/place/")) {
       log(`Detectado negocio único directo.`);
-      return [currentUrl];
+      return aceptarEnlace(currentUrl) ? [currentUrl] : [];
     }
 
     // Esperar al panel de resultados o lista
-    await page.waitForSelector('[role="feed"]', { timeout: 14000 }).catch(() => {});
+    const tieneLista = await page.waitForSelector('[role="feed"]', { timeout: 14000 }).then(() => true).catch(() => false);
+    if (!tieneLista) {
+      const texto = await page.evaluate(() => document.body?.innerText?.slice(0, 1200) || "");
+      if (/unusual traffic|tráfico inusual|captcha|verify you are human|verifica que eres humano/i.test(texto)) {
+        throw new Error("Google Maps solicitó una verificación. Intenta más tarde o reduce el ritmo de búsqueda.");
+      }
+      throw new Error("Google Maps no mostró la lista de resultados. Revisa la conexión y prueba otra búsqueda.");
+    }
 
     let prevCount = 0;
     let sameCount = 0;
-    const maxIteraciones = Math.ceil(maxResultados / 3) + 2;
+    const maxIteraciones = Math.min(80, Math.ceil(maxResultados / 2) + 12);
 
     for (let s = 0; s < maxIteraciones; s++) {
       const enlacesActuales = await page.$$eval('a[href*="/maps/place/"]', (els) =>
@@ -197,7 +205,7 @@ async function buscarEnlacesEnMaps(termino, browser, maxResultados = 30, onLog =
       else sameCount = 0;
       prevCount = enlacesActuales.length;
 
-      if (enlacesActuales.length >= maxResultados) break;
+      if (enlacesActuales.filter(aceptarEnlace).length >= maxResultados) break;
       if (sameCount >= 3) break;
 
       await page.evaluate(() => {
@@ -211,8 +219,9 @@ async function buscarEnlacesEnMaps(termino, browser, maxResultados = 30, onLog =
       [...new Set(els.map((a) => a.href).filter((h) => h.includes("/maps/place/")))]
     );
 
-    log(`Encontrados ${enlaces.length} negocios en Maps.`);
-    return enlaces.slice(0, maxResultados);
+    const aceptados = enlaces.filter(aceptarEnlace).slice(0, maxResultados);
+    log(`Encontrados ${enlaces.length} negocios en Maps; ${aceptados.length} candidatos geográficos.`);
+    return aceptados;
   } finally {
     await page.close().catch(() => {});
   }
