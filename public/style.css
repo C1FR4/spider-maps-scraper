@@ -438,6 +438,7 @@ body {
   transition: border-color 0.2s;
 }
 .form-control:focus { border-color: var(--accent); }
+#inputMaxPersonalizado { margin-top: 8px; }
 
 /* ─── BOTONES ─────────────────────────────────────────────────────── */
 .btn {
@@ -822,10 +823,13 @@ body {
 .run-summary { margin: 9px 0 0; color: #a8bbd8; font-size: 12px; line-height: 1.5; }
 .run-history { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 14px; }
 .run-history h3 { margin: 0 0 10px; font-size: 13px; }
-.run-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 11px; color: #a8bbd8; }
+.run-item { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 11px; color: #a8bbd8; }
 .run-item strong { display: block; margin-bottom: 3px; color: var(--text-main); }
 .run-item button { white-space: nowrap; }
+.run-item details { flex-basis: 100%; line-height: 1.6; }
+.run-item summary { cursor: pointer; color: var(--accent); }
 .table-hint { margin: 0 0 8px; color: var(--text-muted); font-size: 11px; }
+.table-pagination { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin: 0 0 8px; color: var(--text-muted); font-size: 11px; }
 
 .main-content { align-items: start; }
 .results-panel { min-height: 360px; }

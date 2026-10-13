@@ -26,8 +26,8 @@ function validarSolicitudInicio(body = {}) {
   if (categorias.length * distritos.length > 100) {
     return { error: "Máximo 100 combinaciones por ejecución." };
   }
-  if (!Number.isInteger(maxResultados) || maxResultados < 1 || maxResultados > 100) {
-    return { error: "Resultados por búsqueda debe estar entre 1 y 100." };
+  if (!Number.isInteger(maxResultados) || maxResultados < 1 || maxResultados > 1000) {
+    return { error: "Resultados por búsqueda debe ser un entero entre 1 y 1000." };
   }
   if (!["turbo", "deep"].includes(modo)) {
     return { error: "Modo de extracción inválido." };

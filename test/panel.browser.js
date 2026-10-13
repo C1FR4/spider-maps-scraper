@@ -27,23 +27,40 @@ const url = process.env.UI_TEST_URL || "http://127.0.0.1:3001/";
 
     await page.click("#chipsDistritos .chip-remove");
     assert.equal(await page.$eval("#inputDistrito", (element) => element.placeholder), "Ej. Miraflores");
+    await page.type("#inputDistrito", "Comas");
+    await page.keyboard.press("Enter");
 
-    const filtroZona = await page.evaluate(() => {
+    await page.select("#selectMax", "otro");
+    assert.equal(await page.$eval("#inputMaxPersonalizado", (element) => element.hidden), false);
+    await page.type("#inputMaxPersonalizado", "35");
+    assert.equal(await page.evaluate(() => cantidadPorBusqueda()), 35);
+    assert.match(await page.$eval("#resumenBusqueda", (element) => element.textContent), /70 fichas solicitadas/);
+    await page.$eval("#inputMaxPersonalizado", (element) => { element.value = "300"; element.dispatchEvent(new Event("input")); });
+    assert.equal(await page.evaluate(() => cantidadPorBusqueda()), 300);
+    await page.$eval("#inputMaxPersonalizado", (element) => { element.value = "1001"; element.dispatchEvent(new Event("input")); });
+    assert.equal(await page.evaluate(() => cantidadPorBusqueda()), null);
+    await page.select("#selectMax", "50");
+    assert.equal(await page.$eval("#inputMaxPersonalizado", (element) => element.hidden), true);
+
+    const filtroZona = await page.evaluate(async () => {
       tbodyLeads.replaceChildren();
-      renderFilaLead({ Nombre: "Local Norte", Categoría: "farmacia", ZonaBusqueda: "Comas" });
+      renderFilaLead({ Nombre: "Local Norte", Categoría: "farmacia", ZonaBusqueda: "Comas", busquedas_relacionadas: [{ zona_busqueda: "Comas" }, { zona_busqueda: "Independencia" }] });
       renderFilaLead({ Nombre: "Local Sur", Categoría: "farmacia", ZonaBusqueda: "San Borja" });
-      actualizarFiltroZonas();
+      actualizarFiltroZonas(["Comas", "Independencia", "San Borja"]);
       document.getElementById("filtroZona").value = "Comas";
-      aplicarFiltroTabla();
+      const response = await fetch("/api/records?zona=Comas&page=1&limit=60");
+      const datos = await response.json();
       return {
         encabezado: document.querySelector("#tablaLeads thead th:nth-child(3)").textContent,
         zonas: [...document.querySelectorAll("#filtroZona option")].map((option) => option.value),
-        visibles: [...tbodyLeads.rows].filter((row) => row.style.display !== "none").map((row) => row.cells[0].textContent),
+        zonaMultiple: tbodyLeads.rows[0].cells[2].textContent,
+        paginado: response.ok && Array.isArray(datos.records) && Number.isInteger(datos.paginas),
       };
     });
     assert.equal(filtroZona.encabezado, "Distrito / ciudad");
-    assert.deepEqual(filtroZona.zonas, ["", "Comas", "San Borja"]);
-    assert.deepEqual(filtroZona.visibles, ["Local Norte"]);
+    assert.deepEqual(filtroZona.zonas, ["", "Comas", "Independencia", "San Borja"]);
+    assert.equal(filtroZona.zonaMultiple, "Comas · Independencia");
+    assert.ok(filtroZona.paginado);
 
     const estado = await page.evaluate(async () => {
       const response = await fetch("/api/status");

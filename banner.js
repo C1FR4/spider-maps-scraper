@@ -117,7 +117,7 @@ function mostrarBanner() {
   console.clear();
   const artWidth = printSpider();
   printMenuBox(
-    [WHITE + BOLD_CYAN + "SPIDER MAPS SCRAPER" + RESET, "Perú · v2.2"],
+    [WHITE + BOLD_CYAN + "SPIDER MAPS SCRAPER" + RESET, "Perú · v2.3"],
     artWidth
   );
   printFooter(artWidth);

@@ -61,6 +61,7 @@ test("esTelefonoValido - números muy cortos (inválidos)", () => {
 test("esTelefonoValido - números muy largos (inválidos)", () => {
   assert.ok(!esTelefonoValido("1234567890123456")); // 16 dígitos
   assert.ok(!esTelefonoValido("51987654321098765")); // >15 dígitos
+  assert.ok(!esTelefonoValido("510120677000")); // enlace tel mal formado
 });
 
 test("esTelefonoValido - números que empiezan con 10 o 20 de 11 dígitos (inválidos)", () => {

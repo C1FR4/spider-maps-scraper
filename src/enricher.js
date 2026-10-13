@@ -1,6 +1,7 @@
 const cheerio = require("cheerio");
 const fs = require("fs");
 const path = require("path");
+const { obtenerHtmlPublico, validarUrlPublica } = require("./network");
 const {
   extraerUsuarioInstagram,
   esTelefonoValido,
@@ -59,23 +60,25 @@ const REGEX_EMOJI =
   /[\u{1F000}-\u{1FFFF}]|[\u{2600}-\u{27FF}]|[\u{2B00}-\u{2BFF}]|[\u{FE00}-\u{FEFF}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA00}-\u{1FA9F}]|[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]/gu;
 
 const REGEX = {
-  telefono: /(\+?51[\s\-]?)?(9\d{8}|\d{7,8})\b/g,
+  telefono: /(?<!\d)(?:\+?51[\s.-]*)?(?:9(?:[\s.-]*\d){8}|\d(?:[\s.-]*\d){6,7})(?!\d)/g,
   correo: /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g,
 };
 
 const DOMINIOS_AGREGADORES = (CONFIG.agregadoresLinkInBio || []).map((d) => d.toLowerCase());
 
+function hostCoincide(host, dominio) {
+  return host === dominio || host.endsWith(`.${dominio}`);
+}
+
 function esRedSocialOAgregador(url) {
   if (!url) return false;
-  const partes = [
-    "facebook\\.com",
-    "instagram\\.com",
-    "tiktok\\.com",
-    "wa\\.me",
-    "wa\\.link",
-    ...DOMINIOS_AGREGADORES.map((d) => d.replace(/\./g, "\\.")),
-  ].filter(Boolean);
-  return new RegExp(partes.join("|"), "i").test(url);
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return ["facebook.com", "instagram.com", "tiktok.com", "wa.me", "wa.link", ...DOMINIOS_AGREGADORES]
+      .some((dominio) => hostCoincide(host, dominio));
+  } catch (_) {
+    return false;
+  }
 }
 
 function limpiarTexto(texto) {
@@ -99,34 +102,14 @@ function textoLimpio($) {
  * Petición HTTP rápida con cabeceras de navegador reales para erradicar errores 406/403.
  */
 async function fetchRapido(url, timeoutMs = 9000) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const res = await fetch(url, {
-      signal: controller.signal,
-      redirect: "follow",
-      headers: {
-        "User-Agent": uaAleatorio(),
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-        "Accept-Language": "es-PE,es;q=0.9,en-US;q=0.8,en;q=0.7",
-        "Cache-Control": "no-cache",
-      },
-    });
-
-    clearTimeout(timer);
-
-    if (!res.ok) {
-      await res.body?.cancel().catch(() => {});
-      throw new Error(`HTTP ${res.status}`);
-    }
-
-    const html = await res.text();
-    return html;
-  } catch (err) {
-    clearTimeout(timer);
-    throw err;
-  }
+  return obtenerHtmlPublico(url, {
+    timeoutMs,
+    headers: {
+      "User-Agent": uaAleatorio(),
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "es-PE,es;q=0.9,en-US;q=0.8,en;q=0.7",
+    },
+  });
 }
 
 /**
@@ -180,7 +163,13 @@ function extraerTelefonosWeb($, textoVisible) {
     const href = $(el).attr("href") || "";
     const tel = href.replace(/^tel:/i, "").trim();
     const digitos = tel.replace(/\D/g, "");
-    if (digitos.length >= 7) telefonosEncontrados.add(normalizarTelefonoPe(digitos));
+    const numero = normalizarTelefonoPe(digitos);
+    if (esTelefonoValido(numero)) {
+      telefonosEncontrados.add(numero);
+    } else {
+      const visible = normalizarTelefonoPe($(el).text().replace(/\D/g, ""));
+      if (esTelefonoValido(visible)) telefonosEncontrados.add(visible);
+    }
   });
 
   $("a[href]").each((_, el) => {
@@ -197,11 +186,14 @@ function extraerTelefonosWeb($, textoVisible) {
     if (dig.length >= 7) telefonosEncontrados.add(normalizarTelefonoPe(dig));
   });
 
-  const matches = textoVisible.match(REGEX.telefono) || [];
-  matches.forEach((t) => {
+  for (const match of textoVisible.matchAll(REGEX.telefono)) {
+    const t = match[0];
     const digitos = normalizarTelefonoPe(t.replace(/\D/g, ""));
+    const contexto = textoVisible.slice(Math.max(0, match.index - 32), match.index);
+    const tieneEtiqueta = /(?:tel[eé]fono|telf?\.?|celular|cel\.?|m[oó]vil|whats?app|llamar|fono|phone|contacto)\s*[:\-]?\s*$/i.test(contexto);
+    if (digitos.length <= 8 && !tieneEtiqueta) continue;
     telefonosEncontrados.add(digitos);
-  });
+  }
 
   const validos = [...telefonosEncontrados].filter(esTelefonoValido);
   return [...new Set(validos)].slice(0, 3).join(" | ");
@@ -222,14 +214,16 @@ function extraerRedesSociales($, htmlOriginal = "") {
   const procesarUrl = (url, fuenteTipo = "sameAs") => {
     if (!url) return;
     url = url.split("?")[0].split("#")[0].replace(/\/+$/, "");
-    if (/instagram\.com\//i.test(url)) {
+    let host;
+    try { host = new URL(url).hostname.toLowerCase(); } catch (_) { return; }
+    if (hostCoincide(host, "instagram.com")) {
       const u = extraerUsuarioInstagram(url);
       if (u) {
         redes.Instagram.add(`instagram.com/${u}`);
         if (!redes.fuente.Instagram) redes.fuente.Instagram = fuenteTipo;
       }
     } else if (
-      /facebook\.com\//i.test(url) &&
+      hostCoincide(host, "facebook.com") &&
       !/sharer|login|recover|\/photo(?:\/|\.php)|profile\.php|\/dialog\/|l\.php|\/followers?\/|\/following\/|\/messages(?:\/|$)|\/events(?:\/|$)|\/about|\/watch\/|\/marketplace\/|\/gaming\/|\/reels?\/|\/live\/|\/stories\/|\/jobs\/|\/business\/|\/developers\/|\/settings\/|\/saved\/|\/create\/|\/fundraisers\/|\/shopping\/|\/help\/|\/policies\/|\/ads\/|\/share\//i.test(url)
     ) {
       const m = url.match(/facebook\.com\/([^\s"'<>?#]+)/i);
@@ -237,7 +231,7 @@ function extraerRedesSociales($, htmlOriginal = "") {
         redes.Facebook.add(`facebook.com/${m[1]}`);
         if (!redes.fuente.Facebook) redes.fuente.Facebook = fuenteTipo;
       }
-    } else if (/tiktok\.com\/@/i.test(url)) {
+    } else if (hostCoincide(host, "tiktok.com")) {
       const m = url.match(/tiktok\.com\/@([^\s"'<>?/]+)/i);
       if (m && m[1].toLowerCase() !== "linktr.ee") {
         redes.TikTok.add(`tiktok.com/@${m[1]}`);
@@ -409,13 +403,15 @@ async function enriquecerNegocio(negocio, opciones = {}) {
 
   // 1. Si la web en Maps ya es una red social directa
   if (web) {
-    if (/facebook\.com\//i.test(web)) {
+    let host = "";
+    try { host = new URL(web).hostname.toLowerCase(); } catch (_) {}
+    if (hostCoincide(host, "facebook.com")) {
       const m = web.match(/facebook\.com\/([^\s"'<>?#]+)/i);
       if (m) datos.facebook = `facebook.com/${m[1]}`;
-    } else if (/instagram\.com\//i.test(web)) {
+    } else if (hostCoincide(host, "instagram.com")) {
       const u = extraerUsuarioInstagram(web);
       if (u) datos.instagram = `instagram.com/${u}`;
-    } else if (/tiktok\.com\/@/i.test(web)) {
+    } else if (hostCoincide(host, "tiktok.com")) {
       const m = web.match(/tiktok\.com\/@([^\s"'<>?/]+)/i);
       if (m && m[1].toLowerCase() !== "linktr.ee") datos.tiktok = `tiktok.com/@${m[1]}`;
     } else if (esUrlWhatsApp(web)) {
@@ -433,10 +429,29 @@ async function enriquecerNegocio(negocio, opciones = {}) {
         html = await fetchRapido(web, 8000);
       } catch (errFetch) {
         if (browser) {
+          await validarUrlPublica(web);
           // Una web que rechaza fetch aún puede abrirse en el navegador disponible.
           const page = await browser.newPage();
           try {
             await page.setUserAgent(uaAleatorio());
+            await page.setRequestInterception(true);
+            const hostsValidados = new Map();
+            page.on("request", async (request) => {
+              try {
+                const destino = request.url();
+                if (/^(?:data|blob|about):/i.test(destino)) return request.continue();
+                const parsed = new URL(destino);
+                if (!["http:", "https:"].includes(parsed.protocol) || parsed.username || parsed.password) {
+                  return request.abort();
+                }
+                const host = parsed.hostname;
+                if (!hostsValidados.has(host)) hostsValidados.set(host, validarUrlPublica(destino));
+                await hostsValidados.get(host);
+                await request.continue();
+              } catch (_) {
+                await request.abort().catch(() => {});
+              }
+            });
             await page.goto(web, { waitUntil: "domcontentloaded", timeout: 15000 });
             html = await page.content();
           } finally {

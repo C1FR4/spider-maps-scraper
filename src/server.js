@@ -2,11 +2,12 @@ const express = require("express");
 const path = require("path");
 const { exec } = require("child_process");
 const { engine } = require("./scraperEngine");
-const { obtenerRecientes, obtenerEstadisticas, obtenerPendientesGeograficos, contarNegocios, vaciarBaseDeDatos } = require("./db");
+const { obtenerPaginados, obtenerZonas, obtenerEstadisticas, obtenerPendientesGeograficos, contarNegocios, vaciarBaseDeDatos } = require("./db");
 const { exportarExcelBufferDesdeDb } = require("./excel");
 const { mostrarBanner } = require("../banner");
 const { obtenerEjecuciones, obtenerEjecucion, recuperarInterrumpidas } = require("./runs");
 const { validarSolicitudInicio } = require("./validation");
+const { protegerApiLocal } = require("./localApi");
 
 recuperarInterrumpidas();
 
@@ -15,6 +16,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json({ limit: "32kb" }));
 app.use(express.static(path.join(__dirname, "..", "public")));
+app.use("/api", protegerApiLocal);
 
 // Clientes SSE conectados
 const clientesSse = new Set();
@@ -63,9 +65,16 @@ app.get("/api/status", (req, res) => {
 });
 
 app.get("/api/records", (req, res) => {
-  const limite = Math.min(500, Math.max(1, parseInt(req.query.limit, 10) || 50));
-  const records = obtenerRecientes(limite);
-  res.json({ records });
+  const limite = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 60));
+  const pagina = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const zona = typeof req.query.zona === "string" ? req.query.zona.slice(0, 80) : "";
+  const q = typeof req.query.q === "string" ? req.query.q.trim().slice(0, 100) : "";
+  const contacto = typeof req.query.contacto === "string" ? req.query.contacto : "todos";
+  res.json(obtenerPaginados({ pagina, limite, zona, q, contacto }));
+});
+
+app.get("/api/zones", (req, res) => {
+  res.json({ zonas: obtenerZonas() });
 });
 
 app.get("/api/stats", (req, res) => {

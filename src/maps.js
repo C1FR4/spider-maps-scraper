@@ -51,11 +51,11 @@ async function descartarBannerCookies(page) {
 }
 
 async function iniciarNavegador(headless = true) {
+  const sinSandbox = process.env.SPIDER_DISABLE_SANDBOX === "1";
   return await puppeteer.launch({
     headless: headless ? "new" : false,
     args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
+      ...(sinSandbox ? ["--no-sandbox", "--disable-setuid-sandbox"] : []),
       "--disable-dev-shm-usage",
       "--disable-accelerated-2d-canvas",
       "--no-first-run",
@@ -164,7 +164,7 @@ async function extraerFichaNegocio(pagina, enlace, onLog = null) {
 /**
  * Busca negocios en Google Maps y recolecta las URLs de sus fichas
  */
-async function buscarEnlacesEnMaps(termino, browser, maxResultados = 30, onLog = null, aceptarEnlace = () => true) {
+async function buscarEnlacesEnMaps(termino, browser, maxResultados = 30, onLog = null, aceptarEnlace = () => true, debeDetenerse = () => false, pausaMs = 900) {
   const log = (msg) => onLog && onLog(msg);
   const page = await browser.newPage();
   await configurarPagina(page);
@@ -179,7 +179,8 @@ async function buscarEnlacesEnMaps(termino, browser, maxResultados = 30, onLog =
     const currentUrl = page.url();
     if (currentUrl.includes("/maps/place/")) {
       log(`Detectado negocio único directo.`);
-      return aceptarEnlace(currentUrl) ? [currentUrl] : [];
+      const enlaces = aceptarEnlace(currentUrl) ? [currentUrl] : [];
+      return { enlaces, vistos: 1, motivo: enlaces.length >= maxResultados ? "objetivo" : "fin_lista" };
     }
 
     // Esperar al panel de resultados o lista
@@ -192,36 +193,47 @@ async function buscarEnlacesEnMaps(termino, browser, maxResultados = 30, onLog =
       throw new Error("Google Maps no mostró la lista de resultados. Revisa la conexión y prueba otra búsqueda.");
     }
 
-    let prevCount = 0;
     let sameCount = 0;
-    const maxIteraciones = Math.min(80, Math.ceil(maxResultados / 2) + 12);
-
-    for (let s = 0; s < maxIteraciones; s++) {
+    const encontrados = new Set();
+    const aceptados = [];
+    const maxIteraciones = Math.max(80, maxResultados * 2 + 30);
+    const limiteTiempo = Date.now() + 20 * 60 * 1000;
+    let motivo = "limite_recorrido";
+    const recolectar = async () => {
       const enlacesActuales = await page.$$eval('a[href*="/maps/place/"]', (els) =>
         [...new Set(els.map((a) => a.href).filter((h) => h.includes("/maps/place/")))]
       );
+      let nuevos = 0;
+      for (const enlace of enlacesActuales) {
+        if (encontrados.has(enlace)) continue;
+        encontrados.add(enlace);
+        nuevos++;
+        if (aceptarEnlace(enlace)) aceptados.push(enlace);
+      }
+      return nuevos;
+    };
 
-      if (enlacesActuales.length === prevCount) sameCount++;
-      else sameCount = 0;
-      prevCount = enlacesActuales.length;
-
-      if (enlacesActuales.filter(aceptarEnlace).length >= maxResultados) break;
-      if (sameCount >= 3) break;
+    for (let s = 0; s < maxIteraciones; s++) {
+      if (debeDetenerse()) { motivo = "detenido"; break; }
+      if (Date.now() >= limiteTiempo) { motivo = "limite_tiempo"; break; }
+      const nuevos = await recolectar();
+      sameCount = nuevos ? 0 : sameCount + 1;
+      if (aceptados.length >= maxResultados) { motivo = "objetivo"; break; }
+      if (sameCount >= 5) { motivo = "sin_nuevos"; break; }
+      if (s > 0 && s % 25 === 0) log(`Maps: ${aceptados.length}/${maxResultados} fichas en zona; ${encontrados.size} enlaces revisados.`);
 
       await page.evaluate(() => {
         const panel = document.querySelector('[role="feed"]');
         if (panel) panel.scrollBy(0, 2400);
       });
-      await new Promise((r) => setTimeout(r, 900));
+      if (pausaMs > 0) await new Promise((r) => setTimeout(r, pausaMs));
     }
 
-    const enlaces = await page.$$eval('a[href*="/maps/place/"]', (els) =>
-      [...new Set(els.map((a) => a.href).filter((h) => h.includes("/maps/place/")))]
-    );
-
-    const aceptados = enlaces.filter(aceptarEnlace).slice(0, maxResultados);
-    log(`Encontrados ${enlaces.length} negocios en Maps; ${aceptados.length} candidatos geográficos.`);
-    return aceptados;
+    if (motivo !== "detenido") await recolectar();
+    const enlaces = aceptados.slice(0, maxResultados);
+    if (enlaces.length >= maxResultados) motivo = "objetivo";
+    log(`Maps: ${encontrados.size} enlaces revisados, ${enlaces.length}/${maxResultados} candidatos en zona (${motivo}).`);
+    return { enlaces, vistos: encontrados.size, motivo };
   } finally {
     await page.close().catch(() => {});
   }

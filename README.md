@@ -1,4 +1,4 @@
-# Spider Maps Scraper - Perú · v2.2.0 Turbo 🕷️
+# Spider Maps Scraper - Perú · v2.3.0 Turbo 🕷️
 
 [![English](https://img.shields.io/badge/Language-English-blue.svg)](README_EN.md)
 [![Español](https://img.shields.io/badge/Idioma-Español-brightgreen.svg)](README.md)
@@ -12,9 +12,17 @@ Herramienta de alto rendimiento para recolectar y enriquecer datos de contacto d
 
 ---
 
+## Novedades de la versión 2.3.0
+
+- La opción **Otra cantidad** permite solicitar entre 1 y 1000 resultados por combinación de categoría y distrito. Es un máximo: la cantidad obtenida depende de lo que muestre Google Maps.
+- El panel muestra el máximo solicitado antes de iniciar y desglosa los resultados de cada búsqueda en el historial. El motor conserva los enlaces encontrados al desplazarse por Maps y procesa las fichas en tandas con guardado progresivo.
+- Se reforzaron la validación de entradas, la extracción de contactos y la estabilidad de la API local y las solicitudes de red.
+
+---
+
 ## Novedades de la versión 2.2.0
 
-- Cada ficha conserva el distrito o ciudad de la búsqueda que la encontró. El panel permite filtrarlo y el Excel incluye una columna con autofiltro. Las fichas antiguas recuperan esta zona cuando está explícita en el término de búsqueda.
+- Cada ficha conserva todas las categorías y zonas de búsqueda en las que apareció, incluso si se deduplicó. El panel filtra sobre toda la base de datos y el Excel incluye «Zonas encontradas» y una hoja «Búsquedas» con una fila por combinación.
 
 ---
 
@@ -120,6 +128,8 @@ Accede al panel en cualquier momento desde: **`http://localhost:3000`**
 
 Escribe categorías y distritos y confirma cada etiqueta con **Enter o coma**. Los espacios forman parte del nombre, por ejemplo `San Isidro` o `clínica dental`. El panel muestra cuántas combinaciones se ejecutarán y acepta hasta 100 por ejecución. Puedes volver a ejecutar una búsqueda anterior; los negocios ya registrados se deduplican. Si una web falla, la ficha obtenida de Maps se conserva. El progreso y las incidencias de la ejecución se recuperan al recargar el panel.
 
+En **Resultados por búsqueda**, elige una cantidad rápida o **Otra cantidad** para escribir un entero entre 1 y 1000. Es el máximo **por combinación de categoría y distrito**, no una cantidad garantizada ni el total de la ejecución. El panel muestra el volumen máximo solicitado antes de iniciar. Maps puede mostrar menos fichas, repetir negocios, incluir resultados fuera de zona o pedir una verificación en ejecuciones largas. El motor conserva los enlaces vistos durante el desplazamiento, procesa las fichas en tandas de 20 y guarda cada tanda; el historial permite consultar cuántas fichas se vieron, revisaron, descartaron y guardaron por búsqueda. Para volúmenes altos, empieza con una sola combinación y revisa los resultados antes de lanzar muchas.
+
 **Cómo interpretar los resultados:** el panel busca en Google Maps con la categoría y la zona que ingresas y recopila las fichas que Maps muestra, hasta el límite de resultados elegido y siempre que pasen la verificación geográfica descrita abajo. No aplica un filtro por la categoría real de la ficha. La columna **Categoría** conserva tu término de búsqueda: si buscas `bodegas`, Maps también puede mostrar cafeterías, bares u otros negocios. Si aparecen resultados no deseados, prueba una categoría más específica (por ejemplo, `tienda de abarrotes`) y precisa el distrito o provincia. Una búsqueda más concreta puede reducir resultados ajenos, aunque Maps no garantiza una coincidencia exacta.
 
 El panel guarda las últimas ejecuciones en SQLite. Cuando una búsqueda queda pendiente o presenta incidencias, el botón **Reintentar** lanza solo esas combinaciones; la deduplicación evita volver a guardar negocios existentes. **Nueva Sesión** borra tanto los negocios como el historial después de pedir confirmación.
@@ -197,7 +207,7 @@ Puedes personalizar parámetros generales editando `config.json`:
 
 Las búsquedas del panel usan límites locales de Perú y de sus distritos. Se añade «Perú» a la consulta de Maps; después, cada URL con coordenadas se contrasta con el distrito o provincia elegido **antes de abrir la ficha y su sitio web**. Los resultados de otro país o de otra zona se cuentan en el resumen y se omiten. El máximo de resultados corresponde a candidatos dentro de la zona, por lo que el panel puede seguir desplazando la lista de Maps si encuentra resultados fuera de ella.
 
-Escribe un distrito, o `distrito / provincia / departamento` cuando haya nombres repetidos; también se acepta el nombre de una provincia. Las sugerencias rápidas de Lima ya incluyen provincia y departamento. Si Maps no proporciona coordenadas ni siquiera al abrir la ficha, esta queda en la tabla de revisión, visible en el enlace «Ver fichas con ubicación por verificar» del panel y en `/api/geography/pending`; no entra al Excel. Los registros antiguos de la base de datos se conservan como estaban. El filtro geográfico se aplica a las búsquedas iniciadas desde el panel web.
+Escribe un distrito, o `distrito / provincia / departamento` cuando haya nombres repetidos. Si un nombre corresponde tanto a distrito como a provincia, especifica `Distrito: Lima` o `Provincia: Lima`. Las sugerencias rápidas de Lima ya incluyen provincia y departamento. Si Maps no proporciona coordenadas ni siquiera al abrir la ficha, esta queda en la tabla de revisión, visible en el enlace «Ver fichas con ubicación por verificar» del panel y en `/api/geography/pending`; no entra al Excel. Los registros antiguos de la base de datos se conservan como estaban. El filtro geográfico se aplica a las búsquedas iniciadas desde el panel web.
 
 Los límites se incluyen en `data/`, así que la verificación no necesita una API por negocio. `node scripts/import-geo.js` regenera los archivos desde las fuentes fijadas. El límite nacional procede de [geoBoundaries](https://www.geoboundaries.org/api.html) y los distritos de la [capa oficial de límites distritales del Instituto Geográfico Nacional](https://www.datosabiertos.gob.pe/dataset/limites-departamentales). La capa distrital se simplificó para reducir su tamaño y puede ser imprecisa junto a las fronteras. Consulta [la procedencia y atribución de los datos](data/SOURCES.md).
 

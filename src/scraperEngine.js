@@ -31,6 +31,7 @@ class ScraperEngine extends EventEmitter {
       fueraZona: 0,
       sinCoordenadas: 0,
       errores: 0,
+      detalleBusquedas: [],
       inicio: null,
       fin: null,
     };
@@ -73,6 +74,24 @@ class ScraperEngine extends EventEmitter {
     }
   }
 
+  registrarDetalle(item, solicitados, vistos, candidatos, procesados, motivo, antes) {
+    const detalle = {
+      termino: item.termino,
+      solicitados,
+      vistos,
+      candidatos,
+      procesados,
+      fueraZona: this.estadisticas.fueraZona - antes.fueraZona,
+      fueraPeru: this.estadisticas.fueraPeru - antes.fueraPeru,
+      duplicados: this.estadisticas.duplicados - antes.duplicados,
+      nuevos: this.estadisticas.negociosGuardados - antes.nuevos,
+      incidencias: this.estadisticas.errores - antes.errores,
+      motivo,
+    };
+    this.estadisticas.detalleBusquedas.push(detalle);
+    this.emit("log", { tipo: "info", texto: `«${item.termino}»: ${solicitados} solicitados · ${vistos} vistos en Maps · ${candidatos} candidatos en zona · ${procesados} fichas revisadas · ${detalle.nuevos} nuevos · ${detalle.duplicados} duplicados · ${detalle.fueraZona} fuera de zona · ${detalle.incidencias} incidencias (${motivo}).` });
+  }
+
   async ejecutar(configuracion) {
     if (this.activo) {
       throw new Error("Ya hay una tarea de extracción en ejecución.");
@@ -104,6 +123,7 @@ class ScraperEngine extends EventEmitter {
     this.estadisticas.fueraPeru = 0;
     this.estadisticas.fueraZona = 0;
     this.estadisticas.sinCoordenadas = 0;
+    this.estadisticas.detalleBusquedas = [];
     this.estadisticas.fin = null;
     this.progreso = null;
     this.fallos = [];
@@ -143,6 +163,13 @@ class ScraperEngine extends EventEmitter {
 
         const item = terminos[i];
         const erroresAntes = this.estadisticas.errores;
+        const antes = {
+          nuevos: this.estadisticas.negociosGuardados,
+          duplicados: this.estadisticas.duplicados,
+          fueraZona: this.estadisticas.fueraZona,
+          fueraPeru: this.estadisticas.fueraPeru,
+          errores: this.estadisticas.errores,
+        };
         this.publicarProgreso(i + 1, terminos.length, item.termino);
 
         let zona;
@@ -153,6 +180,7 @@ class ScraperEngine extends EventEmitter {
           this.estadisticas.busquedasFallidas++;
           this.fallos.push({ categoria: item.categoria, distrito: item.distrito, motivo: err.message });
           this.emit("log", { tipo: "error", texto: err.message });
+          this.registrarDetalle(item, maxResultados, 0, 0, 0, "zona_invalida", antes);
           this.estadisticas.busquedasCompletadas++;
           this.publicarProgreso(i + 1, terminos.length, item.termino);
           continue;
@@ -179,19 +207,26 @@ class ScraperEngine extends EventEmitter {
         this.emit("log", { tipo: "info", texto: `Buscando: "${item.termino}"...` });
 
         let enlaces = [];
+        let motivoMaps = "";
+        let vistosMaps = 0;
         try {
-          enlaces = await buscarEnlacesEnMaps(
+          const resultadoMaps = await buscarEnlacesEnMaps(
             terminoMaps,
             this.browser,
             maxResultados,
             (msg) => this.emit("log", { tipo: "debug", texto: msg }),
-            aceptarEnlace
+            aceptarEnlace,
+            () => this.detenerSolicitado
           );
+          enlaces = resultadoMaps.enlaces;
+          motivoMaps = resultadoMaps.motivo;
+          vistosMaps = resultadoMaps.vistos;
         } catch (err) {
           this.estadisticas.errores++;
           this.estadisticas.busquedasFallidas++;
           this.fallos.push({ categoria: item.categoria, distrito: item.distrito, motivo: err.message });
           this.emit("log", { tipo: "error", texto: `Error en Maps para "${item.termino}": ${err.message}` });
+          this.registrarDetalle(item, maxResultados, 0, 0, 0, "error_maps", antes);
           this.estadisticas.busquedasCompletadas++;
           this.publicarProgreso(i + 1, terminos.length, item.termino);
           continue;
@@ -202,123 +237,138 @@ class ScraperEngine extends EventEmitter {
         if (fueraPeruBusqueda || fueraZonaBusqueda) {
           this.emit("log", { tipo: "info", texto: `Filtro geográfico: ${fueraPeruBusqueda} fuera de Perú y ${fueraZonaBusqueda} fuera de ${item.distrito}.` });
         }
+        if (this.detenerSolicitado) {
+          this.fallos.push({ categoria: item.categoria, distrito: item.distrito, motivo: "Búsqueda detenida antes de procesar fichas" });
+          this.registrarDetalle(item, maxResultados, vistosMaps, enlaces.length, 0, "detenido", antes);
+          break;
+        }
+        if (motivoMaps !== "objetivo" && enlaces.length) {
+          this.emit("log", { tipo: "warn", texto: `Maps mostró ${enlaces.length} de ${maxResultados} fichas solicitadas para «${item.termino}» (${motivoMaps}). Se procesará lo disponible.` });
+        }
 
         if (!enlaces.length) {
           this.emit("log", { tipo: "warn", texto: `No se encontraron resultados para "${item.termino}".` });
+          this.registrarDetalle(item, maxResultados, vistosMaps, 0, 0, motivoMaps, antes);
           this.estadisticas.busquedasCompletadas++;
           this.publicarProgreso(i + 1, terminos.length, item.termino);
           continue;
         }
 
-        this.emit("log", { tipo: "info", texto: `Extrayendo ${enlaces.length} fichas con pool concurrente...` });
+        this.emit("log", { tipo: "info", texto: `Extrayendo ${enlaces.length} fichas en tandas de 20...` });
 
-        // Extraer fichas usando el pool
         this.estadisticas.negociosEncontrados += enlaces.length;
-        const fichas = (await Promise.all(enlaces.map(async (enlace) => {
-          if (this.detenerSolicitado) return null;
-          let pag;
-          try {
-            pag = await this.pool.obtener();
-            const ficha = await extraerFichaNegocio(pag, enlace, (mensaje) => {
-              this.emit("log", { tipo: "warn", texto: mensaje });
-            });
-            if (!ficha) {
+        let procesados = 0;
+        for (let inicio = 0; inicio < enlaces.length; inicio += 20) {
+          if (this.detenerSolicitado) break;
+          const lote = enlaces.slice(inicio, inicio + 20);
+          const fichas = (await Promise.all(lote.map(async (enlace) => {
+            let pag;
+            try {
+              pag = await this.pool.obtener();
+              const ficha = await extraerFichaNegocio(pag, enlace, (mensaje) => {
+                this.emit("log", { tipo: "warn", texto: mensaje });
+              });
+              if (!ficha) {
+                this.estadisticas.errores++;
+                this.estadisticas.fichasFallidas++;
+              }
+              if (ficha) {
+                const urlFinal = pag.url();
+                const original = verificarUbicacion(enlace, zona);
+                const final = verificarUbicacion(urlFinal, zona);
+                const ubicacion = final.estado === "sin_coordenadas" ? original : final;
+                if (ubicacion.estado !== "dentro_zona") {
+                  if (ubicacion.estado === "sin_coordenadas") {
+                    this.estadisticas.sinCoordenadas++;
+                    guardarPendienteGeografico({
+                      nombre: ficha.nombre,
+                      urlMaps: enlace,
+                      busqueda: item.termino,
+                      motivo: "La URL de Maps no contiene coordenadas verificables",
+                    });
+                  }
+                  if (original.estado === "dentro_zona" && ubicacion.estado === "fuera_peru") this.estadisticas.fueraPeru++;
+                  if (original.estado === "dentro_zona" && ubicacion.estado === "fuera_zona") this.estadisticas.fueraZona++;
+                  this.emit("log", { tipo: "warn", texto: `Ficha omitida por ubicación (${ubicacion.estado}): ${ficha.nombre}. ${enlace}` });
+                  return null;
+                }
+                ficha.urlMaps = final.estado === "dentro_zona" ? urlFinal : enlace;
+              }
+              return ficha && {
+                ...ficha,
+                categoriaUsuario: item.categoria,
+                terminoBusqueda: item.termino,
+              };
+            } catch (err) {
               this.estadisticas.errores++;
               this.estadisticas.fichasFallidas++;
+              this.emit("log", { tipo: "error", texto: `No se pudo procesar una ficha de "${item.termino}": ${err.message}` });
+              return null;
+            } finally {
+              if (pag) this.pool.liberar(pag);
             }
-            if (ficha) {
-              const urlFinal = pag.url();
-              const original = verificarUbicacion(enlace, zona);
-              const final = verificarUbicacion(urlFinal, zona);
-              const ubicacion = final.estado === "sin_coordenadas" ? original : final;
-              if (ubicacion.estado !== "dentro_zona") {
-                if (ubicacion.estado === "sin_coordenadas") {
-                  this.estadisticas.sinCoordenadas++;
-                  guardarPendienteGeografico({
-                    nombre: ficha.nombre,
-                    urlMaps: enlace,
-                    busqueda: item.termino,
-                    motivo: "La URL de Maps no contiene coordenadas verificables",
-                  });
+          }))).filter(Boolean);
+
+          this.emit("log", { tipo: "info", texto: `${fichas.length} fichas dentro de la zona. Enriqueciendo contactos (${modo})...` });
+
+          // Enriquecer en paralelo
+          const tareasEnriquecer = fichas.map((f) =>
+            limitEnrich(async () => {
+              let res;
+              try {
+                res = await enriquecerNegocio(f, {
+                  browser: this.browser,
+                  modo,
+                });
+              } catch (err) {
+                this.estadisticas.errores++;
+                this.emit("log", { tipo: "warn", texto: `No se pudo enriquecer "${f.nombre}": ${err.message}. Se conservará la ficha de Maps.` });
+                res = {
+                  Nombre: f.nombre || "—",
+                  Categoría: f.categoriaUsuario || f.categoria || "—",
+                  Valoración: f.valoracion || "—",
+                  "Teléfono Maps": f.telefono || "—",
+                  Dirección: f.direccion || "—",
+                  Web: f.web || "—",
+                  URLMaps: f.urlMaps || "—",
+                  Búsqueda: f.terminoBusqueda || "",
+                  Método: "maps",
+                  Estado: `Error al revisar web: ${err.message.slice(0, 80)}`,
+                };
+              }
+              try {
+                res.ZonaBusqueda = item.distrito;
+                if (typeof res.Estado === "string" && res.Estado.startsWith("Web:")) {
+                  this.estadisticas.errores++;
                 }
-                if (original.estado === "dentro_zona" && ubicacion.estado === "fuera_peru") this.estadisticas.fueraPeru++;
-                if (original.estado === "dentro_zona" && ubicacion.estado === "fuera_zona") this.estadisticas.fueraZona++;
-                this.emit("log", { tipo: "warn", texto: `Ficha omitida por ubicación (${ubicacion.estado}): ${ficha.nombre}. ${enlace}` });
+                const id = guardarNegocio(res);
+                if (id !== null) {
+                  this.estadisticas.negociosGuardados++;
+                  this.emit("lead", res);
+                } else {
+                  this.estadisticas.duplicados++;
+                }
+                return res;
+              } catch (err) {
+                this.estadisticas.errores++;
+                this.emit("log", { tipo: "error", texto: `Error al guardar "${f.nombre}": ${err.message}` });
                 return null;
               }
-              ficha.urlMaps = final.estado === "dentro_zona" ? urlFinal : enlace;
-            }
-            return ficha && {
-              ...ficha,
-              categoriaUsuario: item.categoria,
-              terminoBusqueda: item.termino,
-            };
-          } catch (err) {
-            this.estadisticas.errores++;
-            this.estadisticas.fichasFallidas++;
-            this.emit("log", { tipo: "error", texto: `No se pudo procesar una ficha de "${item.termino}": ${err.message}` });
-            return null;
-          } finally {
-            if (pag) this.pool.liberar(pag);
-          }
-        }))).filter(Boolean);
+            })
+          );
 
-        this.emit("log", { tipo: "info", texto: `${fichas.length} fichas dentro de la zona. Enriqueciendo contactos (${modo})...` });
-
-        // Enriquecer en paralelo
-        const tareasEnriquecer = fichas.map((f) =>
-          limitEnrich(async () => {
-            if (this.detenerSolicitado) return null;
-            let res;
-            try {
-              res = await enriquecerNegocio(f, {
-                browser: this.browser,
-                modo,
-              });
-            } catch (err) {
-              this.estadisticas.errores++;
-              this.emit("log", { tipo: "warn", texto: `No se pudo enriquecer "${f.nombre}": ${err.message}. Se conservará la ficha de Maps.` });
-              res = {
-                Nombre: f.nombre || "—",
-                Categoría: f.categoriaUsuario || f.categoria || "—",
-                Valoración: f.valoracion || "—",
-                "Teléfono Maps": f.telefono || "—",
-                Dirección: f.direccion || "—",
-                Web: f.web || "—",
-                URLMaps: f.urlMaps || "—",
-                Búsqueda: f.terminoBusqueda || "",
-                Método: "maps",
-                Estado: `Error al revisar web: ${err.message.slice(0, 80)}`,
-              };
-            }
-            try {
-              res.ZonaBusqueda = item.distrito;
-              if (typeof res.Estado === "string" && res.Estado.startsWith("Web:")) {
-                this.estadisticas.errores++;
-              }
-              const id = guardarNegocio(res);
-              if (id !== null) {
-                this.estadisticas.negociosGuardados++;
-                this.emit("lead", res);
-              } else {
-                this.estadisticas.duplicados++;
-              }
-              return res;
-            } catch (err) {
-              this.estadisticas.errores++;
-              this.emit("log", { tipo: "error", texto: `Error al guardar "${f.nombre}": ${err.message}` });
-              return null;
-            }
-          })
-        );
-
-        await Promise.all(tareasEnriquecer);
+          await Promise.all(tareasEnriquecer);
+          procesados += lote.length;
+          checkpointWAL();
+          this.emit("log", { tipo: "info", texto: `Revisadas ${procesados}/${enlaces.length} fichas de «${item.termino}».` });
+        }
+        this.registrarDetalle(item, maxResultados, vistosMaps, enlaces.length, procesados, this.detenerSolicitado ? "detenido" : motivoMaps, antes);
         if (this.estadisticas.errores > erroresAntes) {
           this.fallos.push({ categoria: item.categoria, distrito: item.distrito, motivo: `${this.estadisticas.errores - erroresAntes} incidencia(s) en fichas o webs` });
         } else if (this.detenerSolicitado) {
           this.fallos.push({ categoria: item.categoria, distrito: item.distrito, motivo: "Búsqueda interrumpida" });
         }
-        checkpointWAL();
+        if (this.detenerSolicitado) break;
         this.estadisticas.busquedasCompletadas++;
         this.publicarProgreso(i + 1, terminos.length, item.termino);
       }

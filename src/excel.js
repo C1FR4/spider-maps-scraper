@@ -11,7 +11,7 @@ if (fs.existsSync(CONFIG_PATH)) {
   } catch (_) {}
 }
 
-function crearWorkbook(datos) {
+function crearWorkbook(datos, busquedas = []) {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("Contactos");
 
@@ -19,6 +19,7 @@ function crearWorkbook(datos) {
     { header: "Nombre", key: "Nombre", width: 32 },
     { header: "Categoría", key: "Categoría", width: 22 },
     { header: "Distrito / ciudad", key: "ZonaBusqueda", width: 30 },
+    { header: "Zonas encontradas", key: "ZonasEncontradas", width: 35 },
     { header: "Valoración", key: "Valoración", width: 12 },
     { header: "Teléfono Maps", key: "Teléfono Maps", width: 20 },
     { header: "Teléfono Web", key: "Teléfono Web", width: 20 },
@@ -67,12 +68,26 @@ function crearWorkbook(datos) {
   ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: ws.columnCount } };
   ws.views = [{ state: "frozen", ySplit: 1 }];
 
+  const detalle = wb.addWorksheet("Búsquedas");
+  detalle.columns = [
+    { header: "Nombre", key: "Nombre", width: 32 },
+    { header: "Categoría", key: "Categoría", width: 25 },
+    { header: "Distrito / ciudad", key: "ZonaBusqueda", width: 30 },
+    { header: "Búsqueda", key: "Búsqueda", width: 38 },
+    { header: "URL Maps", key: "URLMaps", width: 42 },
+  ];
+  busquedas.forEach((row) => detalle.addRow(row));
+  detalle.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+  detalle.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F172A" } };
+  detalle.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: detalle.columnCount } };
+  detalle.views = [{ state: "frozen", ySplit: 1 }];
+
   return wb;
 }
 
-async function guardarExcel(datos, ruta = null) {
+async function guardarExcel(datos, ruta = null, busquedas = []) {
   const rutaDestino = ruta || process.env.SPIDER_EXCEL_PATH || path.join(__dirname, "..", CONFIG.archivoExcel || "contactos.xlsx");
-  await crearWorkbook(datos).xlsx.writeFile(rutaDestino);
+  await crearWorkbook(datos, busquedas).xlsx.writeFile(rutaDestino);
   return rutaDestino;
 }
 
@@ -92,6 +107,7 @@ function prepararExportacion() {
     Nombre: r.nombre || "—",
     Categoría: r.categoria || "—",
     ZonaBusqueda: r.zona_busqueda || "—",
+    ZonasEncontradas: [...new Set(r.busquedas_relacionadas.map((item) => item.zona_busqueda).filter(Boolean))].join(" | ") || "—",
     Valoración: r.valoracion || "—",
     "Teléfono Maps": r.telefono_maps || "—",
     "Teléfono Web": r.telefono_web || "—",
@@ -108,12 +124,19 @@ function prepararExportacion() {
     Estado: r.estado || "—",
   }));
 
-  return { exportData, total: unicos.length, omitidos: todos.length - unicos.length };
+  const busquedas = unicos.flatMap((r) => r.busquedas_relacionadas.map((item) => ({
+    Nombre: r.nombre || "—",
+    Categoría: item.categoria || "—",
+    ZonaBusqueda: item.zona_busqueda || "—",
+    Búsqueda: item.termino || "—",
+    URLMaps: r.url_maps || "—",
+  })));
+  return { exportData, busquedas, total: unicos.length, omitidos: todos.length - unicos.length };
 }
 
 async function exportarExcelDesdeDb(rutaPersonalizada = null) {
-  const { exportData, total, omitidos } = prepararExportacion();
-  const rutaFinal = await guardarExcel(exportData, rutaPersonalizada);
+  const { exportData, busquedas, total, omitidos } = prepararExportacion();
+  const rutaFinal = await guardarExcel(exportData, rutaPersonalizada, busquedas);
   return {
     ruta: rutaFinal,
     total,
@@ -122,8 +145,8 @@ async function exportarExcelDesdeDb(rutaPersonalizada = null) {
 }
 
 async function exportarExcelBufferDesdeDb() {
-  const { exportData, total } = prepararExportacion();
-  const buffer = await crearWorkbook(exportData).xlsx.writeBuffer();
+  const { exportData, busquedas, total } = prepararExportacion();
+  const buffer = await crearWorkbook(exportData, busquedas).xlsx.writeBuffer();
   return { buffer, total };
 }
 

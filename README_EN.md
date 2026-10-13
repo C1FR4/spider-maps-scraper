@@ -1,4 +1,4 @@
-# Spider Maps Scraper - Perú · v2.2.0 Turbo 🕷️
+# Spider Maps Scraper - Perú · v2.3.0 Turbo 🕷️
 
 [![English](https://img.shields.io/badge/Language-English-blue.svg)](README_EN.md)
 [![Español](https://img.shields.io/badge/Idioma-Español-brightgreen.svg)](README.md)
@@ -13,9 +13,17 @@ High-performance tool for collecting and enriching business contact data from Go
 
 ---
 
+## What's New in Version 2.3.0
+
+- **Other amount** lets you request 1 to 1000 results per category and district combination. This is a maximum: the number obtained depends on what Google Maps displays.
+- The panel shows the requested maximum before a run and breaks down each search in the run history. The engine retains links found while scrolling Maps and processes listings in batches with progressive saving.
+- Input validation, contact extraction, and the reliability of the local API and network requests have been improved.
+
+---
+
 ## What's New in Version 2.2.0
 
-- Each listing stores the district or city used to find it. The panel has an area filter and the Excel export has a filterable column. Older listings recover the area when it is explicit in the search term.
+- Each listing retains every search category and area in which it appeared, including deduplicated matches. The panel filters the full database, and the Excel export includes a "Found areas" column and a "Búsquedas" sheet with one row per search combination.
 
 ---
 
@@ -122,6 +130,12 @@ npm start
 Access the control panel anytime at: **`http://localhost:3000`**
 
 Confirm each category or district with **Enter or comma**. Spaces remain part of names such as `San Isidro` or `dental clinic`. The panel previews the number of searches; the limit is 100 combinations per run. Previous searches can be run again, and existing businesses are deduplicated. Maps records are kept if website enrichment fails; progress and incidents are restored when the panel reloads.
+
+Under **Results per search**, choose a preset or **Other amount** and enter a whole number from 1 to 1000. This is a maximum **per category and district combination**, not a guaranteed number or the total for the run. The panel shows the requested maximum before starting. Maps may expose fewer places, repeat listings, include places outside the target area, or request verification during long runs. The engine retains links seen while scrolling, processes listings in batches of 20, and saves each batch; run history shows counts per search. For large requests, try one combination and inspect the results before starting many.
+
+**Interpreting results:** The panel searches Google Maps with the entered category and area and collects the listings Maps returns, up to the chosen maximum and subject to the geographic check. It does not filter by a listing's actual Maps category. The **Category** column retains your search term; for example, Maps may return cafés or bars when you search for `bodegas`. Use a more specific category and district or province if the results are too broad.
+
+Panel searches add “Perú” to the Maps query. Listings with coordinates are checked against the selected district or province before opening their Maps profile or website; out-of-area listings are counted and skipped. If a listing has no usable coordinates, it appears in the geographic review list and is excluded from the Excel export. For repeated place names, enter `district / province / department`; use `Distrito: Lima` or `Provincia: Lima` when a name refers to both levels.
 
 The panel stores recent runs in SQLite. **Retry** runs only combinations that were pending or had incidents; deduplication prevents existing businesses from being saved twice. **New Session** clears both records and run history after confirmation.
 

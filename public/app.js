@@ -4,6 +4,8 @@ const state = {
   distritos: [],
   isScraping: false,
   leads: [],
+  pagina: 1,
+  paginas: 1,
 };
 
 // ─── ELEMENTOS DEL DOM ─────────────────────────────────────────────
@@ -12,6 +14,7 @@ const inputCategoria = document.getElementById("inputCategoria");
 const chipsDistritos = document.getElementById("chipsDistritos");
 const inputDistrito = document.getElementById("inputDistrito");
 const selectMax = document.getElementById("selectMax");
+const inputMaxPersonalizado = document.getElementById("inputMaxPersonalizado");
 const selectModo = document.getElementById("selectModo");
 const btnIniciar = document.getElementById("btnIniciar");
 const btnDetener = document.getElementById("btnDetener");
@@ -30,6 +33,9 @@ const filtroTabla = document.getElementById("filtroTabla");
 const filtroZona = document.getElementById("filtroZona");
 const filtroContacto = document.getElementById("filtroContacto");
 const contadorFilas = document.getElementById("contadorFilas");
+const paginaAnterior = document.getElementById("paginaAnterior");
+const paginaSiguiente = document.getElementById("paginaSiguiente");
+const estadoPagina = document.getElementById("estadoPagina");
 const resumenBusqueda = document.getElementById("resumenBusqueda");
 const contadorCategorias = document.getElementById("contadorCategorias");
 const contadorDistritos = document.getElementById("contadorDistritos");
@@ -63,8 +69,24 @@ function actualizarResumenBusqueda() {
     return;
   }
   const ejemplos = state.categorias.flatMap((cat) => state.distritos.map((dist) => `${cat} en ${dist}`));
-  resumenBusqueda.textContent = `${total} ${total === 1 ? "búsqueda" : "búsquedas"}: ${ejemplos.slice(0, 3).join(" · ")}${total > 3 ? ` · y ${total - 3} más` : ""}`;
+  const maximo = cantidadPorBusqueda();
+  const estimacion = maximo ? ` · hasta ${new Intl.NumberFormat("es-PE").format(total * maximo)} fichas solicitadas` : "";
+  resumenBusqueda.textContent = `${total} ${total === 1 ? "búsqueda" : "búsquedas"}: ${ejemplos.slice(0, 3).join(" · ")}${total > 3 ? ` · y ${total - 3} más` : ""}${estimacion}`;
 }
+
+function cantidadPorBusqueda() {
+  const valor = selectMax.value === "otro" ? inputMaxPersonalizado.value.trim() : selectMax.value;
+  if (!/^\d+$/.test(valor)) return null;
+  const cantidad = Number(valor);
+  return Number.isInteger(cantidad) && cantidad >= 1 && cantidad <= 1000 ? cantidad : null;
+}
+
+selectMax.addEventListener("change", () => {
+  inputMaxPersonalizado.hidden = selectMax.value !== "otro";
+  if (!inputMaxPersonalizado.hidden) inputMaxPersonalizado.focus();
+  actualizarResumenBusqueda();
+});
+inputMaxPersonalizado.addEventListener("input", actualizarResumenBusqueda);
 
 function renderChips(tipo) {
   const lista = tipo === "cat" ? state.categorias : state.distritos;
@@ -162,7 +184,8 @@ function renderFilaLead(r, prepend = false) {
 
   const nombre = r.nombre || r.Nombre || "—";
   const categoria = r.categoria || r.Categoría || "—";
-  const zonaBusqueda = r.zona_busqueda || r.ZonaBusqueda || "—";
+  const zonas = [...new Set((r.busquedas_relacionadas || []).map((item) => item.zona_busqueda).filter(Boolean))];
+  const zonaBusqueda = zonas.join(" · ") || r.zona_busqueda || r.ZonaBusqueda || "—";
   const telMaps = r.telefono_maps || r["Teléfono Maps"] || "";
   const telWeb = r.telefono_web || r["Teléfono Web"] || "";
   const telefonos = [
@@ -235,14 +258,22 @@ function renderFilaLead(r, prepend = false) {
   }
 }
 
+let ultimaCarga = 0;
 async function cargarDatosIniciales() {
+  const carga = ++ultimaCarga;
   try {
-    const [statsResponse, recordsResponse] = await Promise.all([
+    const parametros = new URLSearchParams({
+      page: String(state.pagina), limit: "60", zona: filtroZona.value,
+      q: filtroTabla.value.trim(), contacto: filtroContacto.value,
+    });
+    const [statsResponse, recordsResponse, zonasResponse] = await Promise.all([
       fetch("/api/stats"),
-      fetch("/api/records?limit=60"),
+      fetch(`/api/records?${parametros}`),
+      fetch("/api/zones"),
     ]);
-    if (!statsResponse.ok || !recordsResponse.ok) throw new Error("El servidor no respondió correctamente.");
-    const [resStats, resRecords] = await Promise.all([statsResponse.json(), recordsResponse.json()]);
+    if (!statsResponse.ok || !recordsResponse.ok || !zonasResponse.ok) throw new Error("El servidor no respondió correctamente.");
+    const [resStats, resRecords, resZonas] = await Promise.all([statsResponse.json(), recordsResponse.json(), zonasResponse.json()]);
+    if (carga !== ultimaCarga) return;
 
     // Estadísticas
     statTotal.textContent = resStats.total || 0;
@@ -258,40 +289,42 @@ async function cargarDatosIniciales() {
     } else {
       tbodyLeads.innerHTML = `<tr><td colspan="9" class="text-center text-muted">Aún no hay negocios en la base de datos. Inicia una búsqueda arriba.</td></tr>`;
     }
-    actualizarFiltroZonas();
-    aplicarFiltroTabla();
+    state.pagina = resRecords.pagina;
+    state.paginas = resRecords.paginas;
+    actualizarFiltroZonas(resZonas.zonas);
+    paginaAnterior.disabled = state.pagina <= 1;
+    paginaSiguiente.disabled = state.pagina >= state.paginas;
+    estadoPagina.textContent = `Página ${state.pagina} de ${state.paginas}`;
+    contadorFilas.textContent = `${resRecords.filtrados} de ${resRecords.total} registros coinciden · ${resRecords.records.length} en esta página.`;
   } catch (err) {
+    if (carga !== ultimaCarga) return;
     agregarLog(`No se pudieron cargar los registros: ${err.message}`, "error");
     tbodyLeads.innerHTML = `<tr><td colspan="9" class="text-center text-muted">No se pudieron cargar los registros. Revisa el servidor local.</td></tr>`;
   }
 }
 
 // Filtro en tabla en tiempo real
-function actualizarFiltroZonas() {
+function actualizarFiltroZonas(zonas) {
   const seleccionado = filtroZona.value;
-  const zonas = [...new Set([...tbodyLeads.querySelectorAll("tr[data-zona]")].map((tr) => tr.dataset.zona))]
-    .sort((a, b) => a.localeCompare(b, "es"));
   filtroZona.replaceChildren(new Option("Todos los distritos / ciudades", ""));
   for (const zona of zonas) filtroZona.add(new Option(zona, zona));
   filtroZona.value = zonas.includes(seleccionado) ? seleccionado : "";
 }
 
 function aplicarFiltroTabla() {
-  const q = filtroTabla.value.toLowerCase();
-  const filtro = filtroContacto.value;
-  const zona = filtroZona.value;
-  const filas = tbodyLeads.querySelectorAll("tr[data-telefono]");
-  let visibles = 0;
-  filas.forEach((tr) => {
-    const mostrar = tr.textContent.toLowerCase().includes(q) && (!zona || tr.dataset.zona === zona) && (filtro === "todos" || tr.dataset[filtro] === "true");
-    tr.style.display = mostrar ? "" : "none";
-    if (mostrar) visibles++;
-  });
-  contadorFilas.textContent = `${visibles} de ${filas.length} registros visibles · Desliza la tabla para ver todas las columnas.`;
+  state.pagina = 1;
+  cargarDatosIniciales();
 }
-filtroTabla.addEventListener("input", aplicarFiltroTabla);
+let temporizadorFiltro;
+let temporizadorRecarga;
+filtroTabla.addEventListener("input", () => {
+  clearTimeout(temporizadorFiltro);
+  temporizadorFiltro = setTimeout(aplicarFiltroTabla, 250);
+});
 filtroZona.addEventListener("change", aplicarFiltroTabla);
 filtroContacto.addEventListener("change", aplicarFiltroTabla);
+paginaAnterior.addEventListener("click", () => { state.pagina--; cargarDatosIniciales(); });
+paginaSiguiente.addEventListener("click", () => { state.pagina++; cargarDatosIniciales(); });
 
 function actualizarResumenEjecucion(estadisticas = {}) {
   const completadas = estadisticas.busquedasCompletadas || 0;
@@ -318,6 +351,18 @@ async function cargarHistorial() {
       const total = run.estadisticas.busquedasTotales || 0;
       detalle.innerHTML = `<strong>#${run.id} · ${escaparHtml(nombres[run.estado] || run.estado)} · ${escaparHtml(fecha)}</strong>${run.estadisticas.busquedasCompletadas || 0}/${total} búsquedas · ${run.estadisticas.negociosGuardados || 0} nuevos · ${run.fallos.length} por reintentar`;
       item.appendChild(detalle);
+      if (run.estadisticas.detalleBusquedas?.length) {
+        const desglose = document.createElement("details");
+        const titulo = document.createElement("summary");
+        titulo.textContent = "Ver resultados por búsqueda";
+        desglose.appendChild(titulo);
+        for (const busqueda of run.estadisticas.detalleBusquedas) {
+          const linea = document.createElement("div");
+          linea.textContent = `${busqueda.termino}: ${busqueda.solicitados} solicitados · ${busqueda.vistos} vistos · ${busqueda.candidatos} en zona · ${busqueda.procesados} revisados · ${busqueda.nuevos} nuevos · ${busqueda.duplicados} duplicados · ${busqueda.fueraZona} fuera de zona · ${busqueda.incidencias} incidencias (${busqueda.motivo})`;
+          desglose.appendChild(linea);
+        }
+        item.appendChild(desglose);
+      }
       if (run.fallos.length) {
         const boton = document.createElement("button");
         boton.type = "button";
@@ -415,14 +460,8 @@ function conectarEventos() {
   });
 
   sse.addEventListener("lead", (e) => {
-    const lead = JSON.parse(e.data);
-    // Eliminar fila vacía si era la primera
-    if (tbodyLeads.children.length === 1 && tbodyLeads.children[0].children.length === 1) {
-      tbodyLeads.innerHTML = "";
-    }
-    renderFilaLead(lead, true);
-    actualizarFiltroZonas();
-    aplicarFiltroTabla();
+    clearTimeout(temporizadorRecarga);
+    temporizadorRecarga = setTimeout(cargarDatosIniciales, 250);
     actualizarContadoresEnVivo();
   });
 
@@ -482,11 +521,17 @@ btnIniciar.addEventListener("click", async () => {
     alert("Máximo 100 combinaciones por ejecución. Quita algunas categorías o distritos.");
     return;
   }
+  const maxResultados = cantidadPorBusqueda();
+  if (maxResultados === null) {
+    alert("Ingresa una cantidad entera entre 1 y 1000 por búsqueda.");
+    inputMaxPersonalizado.focus();
+    return;
+  }
 
   const payload = {
     categorias: state.categorias,
     distritos: state.distritos,
-    maxResultados: parseInt(selectMax.value, 10),
+    maxResultados,
     modo: selectModo.value,
   };
 
@@ -573,9 +618,12 @@ btnLimpiarBd.addEventListener("click", async () => {
     if (!res.ok) throw new Error(data.error || "Error al limpiar base de datos");
 
     agregarLog("Base de datos reiniciada con éxito. Listo para una nueva búsqueda.", "info");
+    filtroZona.value = "";
+    filtroTabla.value = "";
+    filtroContacto.value = "todos";
     tbodyLeads.innerHTML = `<tr><td colspan="9" class="text-center text-muted">Base de datos vacía. Configura tus categorías e inicia la extracción.</td></tr>`;
-    actualizarFiltroZonas();
-    aplicarFiltroTabla();
+    state.pagina = 1;
+    cargarDatosIniciales();
     actualizarContadoresEnVivo();
     cargarHistorial();
   } catch (err) {

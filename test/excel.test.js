@@ -15,6 +15,7 @@ const { exportarExcelBufferDesdeDb } = require("../src/excel");
 test("dos descargas simultáneas entregan libros completos sin tocar el mismo archivo", async () => {
   guardarNegocio({ Nombre: "Prueba Uno", Categoría: "cafetería", ZonaBusqueda: "San Borja", URLMaps: "https://maps.example/uno", Estado: "OK" });
   guardarNegocio({ Nombre: "Prueba Dos", Categoría: "farmacia", ZonaBusqueda: "Comas / Lima / Lima", URLMaps: "https://maps.example/dos", Estado: "Sin web" });
+  guardarNegocio({ Nombre: "Prueba Dos", Categoría: "bodega", ZonaBusqueda: "Independencia / Lima / Lima", URLMaps: "https://maps.example/dos", Estado: "Sin web" });
 
   const resultados = await Promise.all([exportarExcelBufferDesdeDb(), exportarExcelBufferDesdeDb()]);
   for (const { buffer, total } of resultados) {
@@ -26,9 +27,13 @@ test("dos descargas simultáneas entregan libros completos sin tocar el mismo ar
     assert.deepEqual([hoja.getCell("A2").value, hoja.getCell("A3").value], ["Prueba Dos", "Prueba Uno"]);
     assert.equal(hoja.getCell("C1").value, "Distrito / ciudad");
     assert.deepEqual([hoja.getCell("C2").value, hoja.getCell("C3").value], ["Comas / Lima / Lima", "San Borja"]);
+    assert.equal(hoja.getCell("D2").value, "Comas / Lima / Lima | Independencia / Lima / Lima");
+    const detalle = libro.getWorksheet("Búsquedas");
+    assert.equal(detalle.rowCount, 4);
+    assert.deepEqual([detalle.getCell("B2").value, detalle.getCell("B3").value], ["farmacia", "bodega"]);
     const zip = await JSZip.loadAsync(buffer);
     const xml = await zip.file("xl/worksheets/sheet1.xml").async("string");
-    assert.match(xml, /<autoFilter ref="A1:Q1"\s*\/>/);
+    assert.match(xml, /<autoFilter ref="A1:R1"\s*\/>/);
   }
 });
 

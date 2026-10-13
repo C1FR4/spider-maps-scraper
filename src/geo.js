@@ -30,17 +30,21 @@ for (const feature of districts.features) {
 }
 
 function resolverZona(texto) {
-  const [rawNombre, provincia, departamento] = String(texto || "").split("/").map(normalizar);
+  const [entrada, provincia, departamento] = String(texto || "").split("/").map((parte) => parte.trim());
+  const prefijo = entrada.match(/^(distrito|provincia)\s*:\s*(.+)$/i);
+  const tipoForzado = prefijo?.[1].toLowerCase() || null;
+  const rawNombre = normalizar(prefijo ? prefijo[2] : entrada);
   const nombre = rawNombre === "SURCO" ? "SANTIAGO DE SURCO" : rawNombre;
   if (!nombre) throw new Error("Indica un distrito o una provincia del Perú.");
-  let features = districtByName.get(nombre) || [];
-  let tipo = "distrito";
-  if (!features.length) {
-    features = provinceByName.get(nombre) || [];
-    tipo = "provincia";
+  const distritos = districtByName.get(nombre) || [];
+  const provincias = provinceByName.get(nombre) || [];
+  if (!tipoForzado && !provincia && !departamento && distritos.length && provincias.length) {
+    throw new Error(`«${entrada}» puede ser distrito o provincia. Escribe «Distrito: ${entrada}» o «Provincia: ${entrada}».`);
   }
-  if (provincia) features = features.filter((f) => normalizar(f.properties.provincia) === provincia);
-  if (departamento) features = features.filter((f) => normalizar(f.properties.departamento) === departamento);
+  const tipo = tipoForzado || (distritos.length ? "distrito" : "provincia");
+  let features = tipo === "distrito" ? distritos : provincias;
+  if (provincia) features = features.filter((f) => normalizar(f.properties.provincia) === normalizar(provincia));
+  if (departamento) features = features.filter((f) => normalizar(f.properties.departamento) === normalizar(departamento));
   if (!features.length) {
     throw new Error(`No se encontró la zona «${texto}» en los límites locales del Perú. Usa distrito / provincia / departamento si el nombre es ambiguo.`);
   }

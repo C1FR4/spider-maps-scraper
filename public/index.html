@@ -18,7 +18,7 @@
         <span class="nav-label">Panel local activo</span>
       </div>
       <div class="nav-actions">
-        <span class="badge-version">Perú · v2.2.0 Turbo</span>
+        <span class="badge-version">Perú · v2.3.0 Turbo</span>
         <button id="btnApagarServidor" class="btn btn-secondary btn-sm" title="Detener el servidor local por completo">
           ⏻ Apagar Servidor
         </button>
@@ -71,7 +71,7 @@
         <div class="spider-box-cli">
           <div class="box-line-magenta">┌─────────────────────┐</div>
           <div class="box-line-magenta">│ <span class="box-title-bold">SPIDER MAPS SCRAPER</span> │</div>
-          <div class="box-line-magenta">│      <span class="box-subtitle">Perú · v2.2</span>      │</div>
+          <div class="box-line-magenta">│      <span class="box-subtitle">Perú · v2.3</span>      │</div>
           <div class="box-line-magenta">└─────────────────────┘</div>
           <div class="box-divider-gray">──────────────────────────────────────────────</div>
         </div>
@@ -169,7 +169,10 @@
               <option value="25">25 negocios (Recomendado)</option>
               <option value="50" selected>50 negocios</option>
               <option value="100">100 negocios</option>
+              <option value="otro">Otra cantidad…</option>
             </select>
+            <input id="inputMaxPersonalizado" class="form-control" type="number" min="1" max="1000" step="1" inputmode="numeric" placeholder="De 1 a 1000" aria-label="Otra cantidad de resultados por búsqueda" hidden>
+            <small>Es un máximo por categoría y distrito; Maps puede mostrar menos resultados.</small>
           </div>
           <div class="form-group col">
             <label for="selectModo">Modo de Extracción</label>
@@ -251,6 +254,11 @@
           </div>
         </div>
         <p class="table-hint" id="contadorFilas" aria-live="polite">Desliza la tabla para ver todas las columnas.</p>
+        <div class="table-pagination">
+          <button id="paginaAnterior" class="btn btn-secondary btn-sm" type="button">← Anterior</button>
+          <span id="estadoPagina">Página 1 de 1</span>
+          <button id="paginaSiguiente" class="btn btn-secondary btn-sm" type="button">Siguiente →</button>
+        </div>
 
         <div class="table-container">
           <table class="leads-table" id="tablaLeads">

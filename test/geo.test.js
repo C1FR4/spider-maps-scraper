@@ -23,6 +23,12 @@ test("resuelve distritos repetidos con provincia y acepta el alias Surco", () =>
   assert.throws(() => resolverZona("Distrito inventado"), /No se encontró/);
 });
 
+test("distingue distrito de provincia cuando comparten nombre", () => {
+  assert.throws(() => resolverZona("Lima"), /Distrito: Lima.*Provincia: Lima/);
+  assert.equal(resolverZona("Distrito: Lima").features.length, 1);
+  assert.ok(resolverZona("Provincia: Lima").features.length > 30);
+});
+
 test("deja sin verificar las URLs sin coordenadas", () => {
   assert.equal(verificarUbicacion("https://www.google.com/maps/place/example", resolverZona("La Molina")).estado, "sin_coordenadas");
 });
